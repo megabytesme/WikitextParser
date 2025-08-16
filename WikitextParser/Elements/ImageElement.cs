@@ -1,19 +1,29 @@
-﻿namespace WikitextParser.Elements;
+﻿using System.Collections.Immutable;
+
+namespace WikitextParser.Elements;
 
 /// <summary>
-/// Usually part of template with key value pairs as: image, image_alt, image2, image_alt2, ...
+/// Image or File element, like [[File:MyImage.jpg|thumb|caption]]
 /// </summary>
 public class ImageElement : WikitextElement
 {
     private string? _wikimediaLink;
+    public string FileName { get; }
+    public string? Caption { get; }
+    public IReadOnlyList<string> Options { get; }
 
-    public ImageElement(string sourceText) : base(WikitextElementType.Image, sourceText)
+    public ImageElement(string sourceText, string fileName, IEnumerable<string> options, string? caption) : base(WikitextElementType.Image, sourceText)
     {
+        FileName = fileName;
+        Options = options.ToImmutableList();
+        Caption = caption;
     }
 
-    public required string Name { get; init; }
-    public required string Alt { get; init; }
-    public string WikimediaLink => _wikimediaLink ??= $"https://commons.wikimedia.org/wiki/File:{Name.Replace(" ", "_")}";
+    public string WikimediaLink => _wikimediaLink ??= $"https://commons.wikimedia.org/wiki/File:{FileName.Replace(" ", "_")}";
 
-    protected internal override string ToDebugString() => $"Image: {Name} | {Alt}";
+    protected internal override string ToDebugString()
+    {
+        var captionPart = Caption != null ? $" | {Caption}" : "";
+        return $"Image: {FileName}{captionPart}";
+    }
 }

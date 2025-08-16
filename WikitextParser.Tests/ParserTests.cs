@@ -102,6 +102,7 @@ public class ParserTests
             .Which.CategoryName.Should().Be("2010s American drama television series");
         elements[1].As<CategoryElement>().SortKey.Should().BeNull();
     }
+
     [Fact]
     public void Parse_AdvancedTemplates_CorrectlyParsesParameters()
     {
@@ -144,5 +145,74 @@ public class ParserTests
 
         quoteValueParagraph.ChildElements.OfType<LinkElement>().Single()
             .DisplayText.Should().Be("link");
+    }
+
+    [Fact]
+    public void Parse_References_HandlesNamedAndSelfClosingTags()
+    {
+        // Arrange
+        var wikitext = "Text with a standard ref.<ref>Content</ref> " +
+                       "And a named ref.<ref name=\"test\">Named Content</ref> " +
+                       "And a self-closing ref.<ref name=\"self\" />";
+
+        // Act
+        var elements = Parser.Parse(wikitext).ToList();
+
+        // Assert
+        // **FIXED ASSERTION**: The chain is broken into two lines.
+        elements.Should().ContainSingle();
+        var paragraph = elements.First().Should().BeOfType<ParagraphElement>().Subject;
+
+        var refs = paragraph.ChildElements.OfType<RefElement>().ToList();
+        refs.Should().HaveCount(3);
+
+        // Standard ref
+        refs[0].Name.Should().BeNull();
+        refs[0].ChildElement.Should().NotBeNull();
+        refs[0].ChildElement.As<TextElement>().SourceText.Should().Be("Content");
+
+        // Named ref
+        refs[1].Name.Should().Be("test");
+        refs[1].ChildElement.Should().NotBeNull();
+        refs[1].ChildElement.As<TextElement>().SourceText.Should().Be("Named Content");
+
+        // Self-closing ref
+        refs[2].Name.Should().Be("self");
+        refs[2].ChildElement.Should().BeNull();
+    }
+
+
+    [Fact]
+    public void Parse_FileLinks_CorrectlyParsesOptionsAndCaption()
+    {
+        // Arrange
+        var wikitextWithSingleNewline = "[[File:MyImage.jpg|thumb|220px|right|This is the caption.]]\n[[Image:Another.png]]";
+        var wikitextWithDoubleNewline = "[[File:MyImage.jpg|thumb|220px|right|This is the caption.]]\n\n[[Image:Another.png]]";
+
+        // Act
+        var elements1 = Parser.Parse(wikitextWithSingleNewline).ToList();
+        var elements2 = Parser.Parse(wikitextWithDoubleNewline).ToList();
+
+        elements1.Should().ContainSingle();
+        var paragraph1 = elements1.First().Should().BeOfType<ParagraphElement>().Subject;
+
+        var children1 = paragraph1.ChildElements.ToList();
+        children1.Should().HaveCount(3);
+        children1[0].Should().BeOfType<ImageElement>();
+        children1[1].Should().BeOfType<TextElement>();
+        children1[2].Should().BeOfType<ImageElement>();
+
+
+        elements2.Should().HaveCount(2);
+
+        var para2_1 = elements2[0].Should().BeOfType<ParagraphElement>().Subject;
+        para2_1.ChildElements.Should().ContainSingle();
+        var image1 = para2_1.ChildElements.First().Should().BeOfType<ImageElement>().Subject;
+        image1.FileName.Should().Be("MyImage.jpg");
+
+        var para2_2 = elements2[1].Should().BeOfType<ParagraphElement>().Subject;
+        para2_2.ChildElements.Should().ContainSingle();
+        var image2 = para2_2.ChildElements.First().Should().BeOfType<ImageElement>().Subject;
+        image2.FileName.Should().Be("Another.png");
     }
 }

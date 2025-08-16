@@ -11,12 +11,14 @@ public static class Parser
 
         while (currentIndex < sourceText.Length)
         {
+            // Skip leading whitespace for the current element.
             while (currentIndex < sourceText.Length && char.IsWhiteSpace(sourceText[currentIndex]))
             {
                 currentIndex++;
             }
             if (currentIndex >= sourceText.Length) break;
 
+            // Check for block-level elements
             if (TryParseHeading(sourceText, ref currentIndex, out var heading))
             {
                 yield return heading!;
@@ -25,8 +27,7 @@ public static class Parser
 
             if (sourceText.Substring(currentIndex).StartsWith("[[Category:", StringComparison.OrdinalIgnoreCase))
             {
-                int tempIndex = currentIndex;
-                if (TryParseCategoryLink(sourceText, ref tempIndex, out var category, out var nextIndex))
+                if (TryParseCategoryLink(sourceText, ref currentIndex, out var category, out var nextIndex))
                 {
                     yield return category!;
                     currentIndex = nextIndex;
@@ -58,7 +59,7 @@ public static class Parser
                     }
 
                     int pipeIndex = innerText.IndexOfAny(['|', '\n']);
-                    string templateName = pipeIndex != -1 ? innerText.Substring(0, pipeIndex).Trim() : innerText.Trim();
+                    string templateName = (pipeIndex != -1) ? innerText.Substring(0, pipeIndex).Trim() : innerText.Trim();
 
                     yield return new TemplateElement(elementSource) { TemplateName = templateName };
                     currentIndex = end;
@@ -66,18 +67,24 @@ public static class Parser
                 }
             }
 
+            // If we are here, it must be a paragraph.
+            // Find where this paragraph ends by looking for the next block-level element or a double newline.
             int endOfParagraph = sourceText.Length;
 
-            int nextTemplateStart = sourceText.IndexOf("{{", currentIndex);
-            if (nextTemplateStart != -1)
-            {
-                endOfParagraph = nextTemplateStart;
-            }
+            int[] nextBlockStarts =
+            [
+                sourceText.IndexOf("\n\n", currentIndex),
+                sourceText.IndexOf("\n{{", currentIndex),
+                sourceText.IndexOf("\n[[Category:", currentIndex, StringComparison.OrdinalIgnoreCase),
+                sourceText.IndexOf("\n==", currentIndex)
+            ];
 
-            int nextHeadingStart = sourceText.IndexOf("\n=", currentIndex);
-            if (nextHeadingStart != -1)
+            foreach (var index in nextBlockStarts)
             {
-                endOfParagraph = Math.Min(endOfParagraph, nextHeadingStart + 1);
+                if (index != -1)
+                {
+                    endOfParagraph = Math.Min(endOfParagraph, index);
+                }
             }
 
             string paragraphSource = sourceText.Substring(currentIndex, endOfParagraph - currentIndex).Trim();
@@ -95,7 +102,7 @@ public static class Parser
         heading = null;
         int i = currentIndex;
 
-        if (i > 0 && text[i - 1] != '\n') return false;
+        if (i > 0 && text[i - 1] != '\n' && text[i - 1] != '\r') return false;
 
         int level = 0;
         while (i < text.Length && text[i] == '=')
@@ -146,6 +153,56 @@ public static class Parser
                     yield return element;
                 }
             }
+        }
+    }
+
+    internal static IEnumerable<TemplateParameterElement> ParseTemplateParameters(TemplateElement template)
+    {
+        string innerText = template.SourceText.Substring(2, template.SourceText.Length - 4);
+
+        int firstPipe = innerText.IndexOf('|');
+        if (firstPipe == -1) yield break; // No parameters
+
+        string paramsText = innerText.Substring(firstPipe + 1);
+
+        var parameterStrings = SplitAtTopLevel(paramsText, '|');
+
+        foreach (string paramStr in parameterStrings)
+        {
+            string trimmedParam = paramStr.Trim();
+            if (string.IsNullOrEmpty(trimmedParam)) continue;
+
+            string? key = null;
+            string valueSource;
+
+            int equalsIndex = trimmedParam.IndexOf('=');
+            if (equalsIndex > 0)
+            {
+                key = trimmedParam.Substring(0, equalsIndex).Trim();
+                valueSource = trimmedParam.Substring(equalsIndex + 1).Trim();
+            }
+            else
+            {
+                valueSource = trimmedParam;
+            }
+
+            var parsedValueElements = ParseInline(valueSource).ToList();
+            WikitextElement valueElement;
+
+            if (parsedValueElements.Count == 1)
+            {
+                valueElement = parsedValueElements.First()!;
+            }
+            else if (parsedValueElements.Any())
+            {
+                valueElement = new ParagraphElement(valueSource, parsedValueElements.Select(e => e!));
+            }
+            else
+            {
+                valueElement = new TextElement(valueSource);
+            }
+
+            yield return new TemplateParameterElement(trimmedParam, key, valueElement);
         }
     }
 
@@ -222,6 +279,7 @@ public static class Parser
         if (TryParseBoldItalic(sourceText, ref i, out element, out nextIndex)) return true;
         if (TryParseBold(sourceText, ref i, out element, out nextIndex)) return true;
         if (TryParseItalic(sourceText, ref i, out element, out nextIndex)) return true;
+        if (TryParseFile(sourceText, ref i, out element, out nextIndex)) return true;
         if (TryParseLink(sourceText, ref i, out element, out nextIndex)) return true;
         if (TryParseRef(sourceText, ref i, out element, out nextIndex)) return true;
         if (TryParseTemplate(sourceText, ref i, out element, out nextIndex)) return true;
@@ -262,6 +320,111 @@ public static class Parser
                 return true;
             }
         }
+        return false;
+    }
+
+    private static bool TryParseFile(string sourceText, ref int i, out WikitextElement? element, out int nextIndex)
+    {
+        element = null;
+        nextIndex = i;
+
+        if (sourceText.Length <= i + 1 || sourceText.Substring(i, 2) != "[[") return false;
+
+        string prefix;
+        if (sourceText.Substring(i + 2).StartsWith("File:", StringComparison.OrdinalIgnoreCase))
+            prefix = "File:";
+        else if (sourceText.Substring(i + 2).StartsWith("Image:", StringComparison.OrdinalIgnoreCase))
+            prefix = "Image:";
+        else
+            return false;
+
+        int end = sourceText.IndexOf("]]", i + 2, StringComparison.Ordinal);
+        if (end == -1) return false;
+
+        nextIndex = end + 2;
+        string fullSource = sourceText.Substring(i, nextIndex - i);
+        string innerContent = fullSource.Substring(2 + prefix.Length, fullSource.Length - (4 + prefix.Length));
+
+        var parts = innerContent.Split('|');
+        var fileName = parts[0].Trim();
+        var options = new List<string>();
+        string? caption = null;
+
+        var knownOptions = new HashSet<string> { "thumb", "thumbnail", "frame", "framed", "frameless", "border", "right", "left", "center", "none", "baseline", "middle", "sub", "super", "top", "text-top", "bottom", "text-bottom" };
+
+        for (int p = 1; p < parts.Length; p++)
+        {
+            var part = parts[p].Trim();
+            var partLower = part.ToLower();
+
+            if (partLower.EndsWith("px") && int.TryParse(partLower.Replace("px", "").TrimStart('x'), out _))
+                options.Add(part);
+            else if (knownOptions.Contains(partLower))
+                options.Add(part);
+            else if (partLower.StartsWith("alt="))
+                options.Add(part);
+            else
+                caption = part;
+        }
+
+        element = new ImageElement(fullSource, fileName, options, caption);
+        return true;
+    }
+
+    private static bool TryParseRef(string sourceText, ref int i, out WikitextElement? element, out int nextIndex)
+    {
+        element = null;
+        nextIndex = i;
+
+        if (sourceText.Length <= i + 4 || !sourceText.Substring(i).StartsWith("<ref")) return false;
+
+        int tagEnd = sourceText.IndexOf('>', i + 4);
+        if (tagEnd == -1) return false;
+
+        string tagContent = sourceText.Substring(i + 4, tagEnd - (i + 4));
+        string? name = null;
+
+        int nameIndex = tagContent.IndexOf("name=", StringComparison.OrdinalIgnoreCase);
+        if (nameIndex != -1)
+        {
+            int valueStart = nameIndex + 5;
+            char quoteChar = tagContent[valueStart];
+            if (quoteChar == '"' || quoteChar == '\'')
+            {
+                int valueEnd = tagContent.IndexOf(quoteChar, valueStart + 1);
+                if (valueEnd != -1)
+                {
+                    name = tagContent.Substring(valueStart + 1, valueEnd - (valueStart + 1));
+                }
+            }
+        }
+
+        if (tagContent.Trim().EndsWith("/"))
+        {
+            nextIndex = tagEnd + 1;
+            string fullSource = sourceText.Substring(i, nextIndex - i);
+            element = new RefElement(fullSource, null, name);
+            return true;
+        }
+
+        int contentEnd = sourceText.IndexOf("</ref>", tagEnd, StringComparison.Ordinal);
+        if (contentEnd != -1)
+        {
+            nextIndex = contentEnd + 6;
+            string innerSource = sourceText.Substring(tagEnd + 1, contentEnd - (tagEnd + 1));
+            WikitextElement? childElement = null;
+
+            if (!string.IsNullOrEmpty(innerSource))
+            {
+                var children = ParseInline(innerSource).ToList();
+                childElement = children.Count == 1 ? children.First() : new ParagraphElement(innerSource, children.Select(c => c!));
+            }
+
+            string fullSource = sourceText.Substring(i, nextIndex - i);
+            element = new RefElement(fullSource, childElement, name);
+            return true;
+        }
+
         return false;
     }
 
@@ -370,24 +533,6 @@ public static class Parser
         return false;
     }
 
-    private static bool TryParseRef(string sourceText, ref int i, out WikitextElement? element, out int nextIndex)
-    {
-        element = null;
-        nextIndex = i;
-        if (i + 4 < sourceText.Length && sourceText.Substring(i).StartsWith("<ref>"))
-        {
-            int end = sourceText.IndexOf("</ref>", i + 5, StringComparison.Ordinal);
-            if (end != -1)
-            {
-                string innerSource = sourceText.Substring(i + 5, end - (i + 5));
-                element = new RefElement(sourceText.Substring(i, end - i + 6), ParseInline(innerSource).FirstOrDefault() ?? new TextElement(innerSource));
-                nextIndex = end + 6;
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static bool TryParseTemplate(string sourceText, ref int i, out WikitextElement? element, out int nextIndex)
     {
         element = null;
@@ -407,56 +552,6 @@ public static class Parser
             }
         }
         return false;
-    }
-
-    internal static IEnumerable<TemplateParameterElement> ParseTemplateParameters(TemplateElement template)
-    {
-        string innerText = template.SourceText.Substring(2, template.SourceText.Length - 4);
-
-        int firstPipe = innerText.IndexOf('|');
-        if (firstPipe == -1) yield break; // No parameters
-
-        string paramsText = innerText.Substring(firstPipe + 1);
-
-        var parameterStrings = SplitAtTopLevel(paramsText, '|');
-
-        foreach (string paramStr in parameterStrings)
-        {
-            string trimmedParam = paramStr.Trim();
-            if (string.IsNullOrEmpty(trimmedParam)) continue;
-
-            string? key = null;
-            string valueSource;
-
-            int equalsIndex = trimmedParam.IndexOf('=');
-            if (equalsIndex > 0)
-            {
-                key = trimmedParam.Substring(0, equalsIndex).Trim();
-                valueSource = trimmedParam.Substring(equalsIndex + 1).Trim();
-            }
-            else
-            {
-                valueSource = trimmedParam;
-            }
-            
-            var parsedValueElements = ParseInline(valueSource).ToList();
-            WikitextElement valueElement;
-
-            if (parsedValueElements.Count == 1)
-            {
-                valueElement = parsedValueElements.First()!;
-            }
-            else if (parsedValueElements.Any())
-            {
-                valueElement = new ParagraphElement(valueSource, parsedValueElements.Select(e => e!));
-            }
-            else
-            {
-                valueElement = new TextElement(valueSource);
-            }
-
-            yield return new TemplateParameterElement(trimmedParam, key, valueElement);
-        }
     }
 
     private static int FindMatchingDelimiters(string text, int startIndex, string open, string close)
