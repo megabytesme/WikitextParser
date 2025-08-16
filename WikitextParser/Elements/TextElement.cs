@@ -1,4 +1,6 @@
-﻿namespace WikitextParser.Elements;
+﻿using System.Web;
+
+namespace WikitextParser.Elements;
 
 /// <summary>
 /// Plain text
@@ -9,5 +11,9 @@ public class TextElement : WikitextElement
     {
     }
 
+    public override string ConvertToHtml() => HttpUtility.HtmlEncode(SourceText);
+
+    public override string ConvertToText() => SourceText;
+    
     protected internal override string ToDebugString() => SourceText;
 }

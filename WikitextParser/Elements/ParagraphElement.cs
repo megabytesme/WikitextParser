@@ -14,6 +14,10 @@ public class ParagraphElement : WikitextElement
     }
 
     public IEnumerable<WikitextElement> ChildElements { get; }
+    
+    public override string ConvertToHtml() => $"<p>{string.Concat(ChildElements.Select(c => c.ConvertToHtml()))}</p>";
+
+    public override string ConvertToText() => $"{string.Concat(ChildElements.Select(c => c.ConvertToText()))}\n\n";
 
     protected internal override string ToDebugString()
     {

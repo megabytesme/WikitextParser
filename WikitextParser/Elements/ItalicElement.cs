@@ -12,6 +12,10 @@ public class ItalicElement : WikitextElement
     {
         InnerElement = innerElement;
     }
+    
+    public override string ConvertToHtml() => $"<em>{InnerElement.ConvertToHtml()}</em>";
+
+    public override string ConvertToText() => InnerElement.ConvertToText();
 
     protected internal override string ToDebugString() => $"Italic: {InnerElement.ToDebugString()}";
 }

@@ -21,6 +21,10 @@ public class TemplateParameterElement : WikitextElement
         Value = value;
     }
 
+    public override string ConvertToHtml() => Value.ConvertToHtml();
+
+    public override string ConvertToText() => Value.ConvertToText();
+
     protected internal override string ToDebugString()
     {
         if (Key != null)

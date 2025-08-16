@@ -15,6 +15,14 @@ public class RefElement : WikitextElement
         Name = name;
     }
 
+    public override string ConvertToHtml()
+    {
+        int refIndex = Name?.GetHashCode() ?? SourceText.GetHashCode();
+        return $"<sup><a href=\"#ref-{refIndex}\">[{Math.Abs(refIndex % 100)}]</a></sup>";
+    }
+
+    public override string ConvertToText() => ""; // References are metadata
+
     protected internal override string ToDebugString()
     {
         var namePart = Name != null ? $" Name: {Name}" : "";

@@ -13,6 +13,10 @@ public class CategoryElement : WikitextElement
         CategoryName = categoryName;
         SortKey = sortKey;
     }
+    
+    public override string ConvertToHtml() => ""; // Categories are not rendered inline
+
+    public override string ConvertToText() => ""; // Categories are not rendered inline
 
     protected internal override string ToDebugString() => $"Category: {CategoryName}" + (SortKey != null ? $" | {SortKey}" : "");
 }

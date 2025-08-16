@@ -17,5 +17,17 @@ public abstract class WikitextElement
     public WikitextElementType Type { get; }
     public string SourceText { get; }
 
+    /// <summary>
+    /// Converts the Wikitext element to its HTML representation.
+    /// </summary>
+    /// <returns>A string containing the HTML representation of the element.</returns>
+    public abstract string ConvertToHtml();
+
+    /// <summary>
+    /// Converts the Wikitext element to its plain text representation.
+    /// </summary>
+    /// <returns>A string containing the plain text representation of the element.</returns>
+    public abstract string ConvertToText();
+
     protected internal abstract string ToDebugString();
 }

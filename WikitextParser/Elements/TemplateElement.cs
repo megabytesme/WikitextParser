@@ -41,6 +41,27 @@ public class TemplateElement : WikitextElement
         return _plainListElements ??= Parser.ParsePlainList(this).ToImmutableList();
     }
 
+    public override string ConvertToHtml()
+    {
+        if (IsPlainlist)
+        {
+            var items = GetPlainListElements()
+                .Select(e => $"<li>{e.ConvertToHtml()}</li>");
+            return $"<ul>{string.Concat(items)}</ul>";
+        }
+        
+        return "";
+    }
+
+    public override string ConvertToText()
+    {
+        if (IsPlainlist)
+        {
+            return string.Concat(GetPlainListElements().Select(e => $"\n* {e.ConvertToText()}"));
+        }
+        return "";
+    }
+
     protected internal override string ToDebugString()
     {
         StringBuilder sb = new();

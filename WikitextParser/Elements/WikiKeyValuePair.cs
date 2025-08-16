@@ -13,6 +13,10 @@ public class WikiKeyValuePairElement : WikitextElement
         Key = key;
         Value = value;
     }
+    
+    public override string ConvertToHtml() => "";
+
+    public override string ConvertToText() => "";
 
     protected internal override string ToDebugString() => $"KeyValue: {Key} : {Value.ToDebugString()}";
 }

@@ -12,6 +12,10 @@ public class BoldElement : WikitextElement
     {
         InnerElement = innerElement;
     }
+    
+    public override string ConvertToHtml() => $"<strong>{InnerElement.ConvertToHtml()}</strong>";
+
+    public override string ConvertToText() => InnerElement.ConvertToText();
 
     protected internal override string ToDebugString() => $"Bold: {InnerElement.ToDebugString()}";
 }

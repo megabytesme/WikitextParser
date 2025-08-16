@@ -15,5 +15,9 @@ public class HeadingElement : WikitextElement
         ChildElement = childElement;
     }
 
+    public override string ConvertToHtml() => $"<h{HeadingLevel}>{ChildElement.ConvertToHtml()}</h{HeadingLevel}>";
+
+    public override string ConvertToText() => $"\n\n{ChildElement.ConvertToText()}\n\n";
+
     protected internal override string ToDebugString() => $"H{HeadingLevel}: {ChildElement.ToDebugString()}";
 }
