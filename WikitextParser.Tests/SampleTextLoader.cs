@@ -18,4 +18,6 @@ public static class SampleTextLoader
     }
 
     public static string LoadSampleText1() => Load("WikiText1.txt");
+
+    public static string LoadFictionalPage() => Load("FictionalPage.txt");
 }

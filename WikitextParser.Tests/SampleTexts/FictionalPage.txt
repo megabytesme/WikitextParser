@@ -1,0 +1,76 @@
+{{Short description|Fictional American television series}}
+{{About|the fictional television series}}
+{{Use American English|date=October 2024}}
+{{Infobox television
+| image                = Eerie_Hollow_logo.png
+| alt                  = "Eerie Hollow" text written in glowing green on a dark background
+| genre                = {{Plainlist|
+* [[Science fiction on television|Science Fiction]]
+* [[Supernatural fiction|Supernatural]]
+* [[Mystery film|Mystery]]
+}}
+| creator              = [[The Weaver Siblings]]
+| starring             = {{Plainlist|
+* [[Jane Doe]]
+* [[John Smith]]
+* [[Finn Fish]]
+* [[Millie Brown]]
+* [[Gaten Moss]]
+* [[Caleb Jones]]
+}}
+| country              = United States
+| language             = English
+| num_seasons          = 4
+| num_episodes         = 34
+| network              = [[StreamVerse]]
+| first_aired          = {{Start date|2023|7|15}}
+}}
+
+'''''Eerie Hollow''''' is a fictional American television series created by [[The Weaver Siblings]] for [[StreamVerse]]. Produced by Midnight Pictures, the first season was released on July 15, 2023. The second and third seasons followed in October 2024 and July 2025, respectively. A fourth season was released in two parts in May and July 2026.
+
+Set in the 1990s, the series centers on the residents of the fictional town of Whisper Creek, [[Oregon]], after a nearby government facility opens a gateway to a hostile alternate dimension known as "the Other Side". The ensemble cast includes Jane Doe, John Smith, Finn Fish, and Millie Brown.
+
+The Weaver Siblings developed ''Eerie Hollow'' as a mix of investigative drama and supernatural elements, infusing references to the pop culture of the 1990s. Thematic elements were inspired by the works of director Marcus Vance and author Arthur Croft.
+
+==Plot Overview==
+''Eerie Hollow'' is set in the fictional town of Whisper Creek, Oregon, in the 1990s. The nearby Whisper Creek National Laboratory ostensibly performs research for the government but secretly experiments with the paranormal, inadvertently creating a portal to the Other Side.
+
+The first season begins in November 1993, when Leo Vance is abducted by a creature from the Other Side. His mother, Sarah, and Police Chief Brody search for him. A young psychokinetic girl named Zeta escapes from the laboratory and is found by Leo's friends, who she helps in their search.<ref>{{cite web |title=Fictional Article One |url=http://example.com/1 }}</ref>
+
+==Cast and Characters==
+{{Main|List of Eerie Hollow characters}}
+* [[Jane Doe]] as Sarah Vance, the mother of Leo and Mark Vance.
+* [[John Smith]] as Chief Brody, the chief of Whisper Creek Police Department.
+
+==Production==
+===Development===
+''Eerie Hollow'' was created by The Weaver Siblings. They wrote and produced their 2022 film ''Unseen'', and were later mentored by filmmaker M. Night Shyamalan.
+
+The series was originally known as ''Cascade Locks'', set in Oregon. After deciding to change the narrative to the fictional town of Whisper Creek, the siblings came up with the title ''Eerie Hollow'', inspired by an Arthur Croft novel, ''Forgotten Places''.
+
+===Writing===
+The idea started with the concept of the 2020 film ''Captives'', expanding on the moral struggles of a parent whose child is kidnapped.
+
+==Reception==
+The series has received critical praise for its characterization, atmosphere, and acting.
+{{TOC limit|2}}
+
+==Other Media==
+===Comics===
+{{main|List of Eerie Hollow comics}}
+Dark Horse Comics announced a partnership with StreamVerse for a line of stories.
+{| class="wikitable"
+|-
+! Title !! Release Date !! Writer
+|-
+| ''Eerie Hollow: The Other Side''
+| September 2024
+| Jody Houser
+|-
+| ''Eerie Hollow: Six''
+| May 2025
+| Jody Houser
+|}
+
+[[Category:Fictional TV Shows]]
+[[Category:Works set in Oregon]]
