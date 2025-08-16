@@ -10,7 +10,7 @@ public class TemplateElement : WikitextElement
 {
     private string? _infoboxType;
     private IEnumerable<WikitextElement>? _plainListElements;
-    private IEnumerable<WikiKeyValuePairElement>? _childElements;
+    private IEnumerable<TemplateParameterElement>? _parameters;
 
     public TemplateElement(string sourceText) : base(WikitextElementType.Template, sourceText)
     {
@@ -18,10 +18,12 @@ public class TemplateElement : WikitextElement
 
     public required string TemplateName { get; init; }
 
-    public IEnumerable<WikiKeyValuePairElement> ChildElements =>
-        _childElements ??= Parser.ParseTemplateKeyValuePairs(this).ToImmutableList();
+    public IEnumerable<TemplateParameterElement> Parameters =>
+        _parameters ??= Parser.ParseTemplateParameters(this).ToImmutableList();
 
     public bool IsPlainlist => TemplateName.StartsWith("Plainlist|");
+
+    public bool IsTransclusion => TemplateName.StartsWith(":");
 
     public bool IsInfobox => TemplateName.StartsWith("Infobox");
 
@@ -44,9 +46,9 @@ public class TemplateElement : WikitextElement
         StringBuilder sb = new();
 
         sb.Append($"Template: {TemplateName}");
-        foreach (WikiKeyValuePairElement pair in ChildElements)
+        foreach (TemplateParameterElement param in Parameters)
         {
-            sb.Append($"    {pair.ToDebugString()}");
+            sb.Append($"    {param.ToDebugString()}");
         }
 
         return sb.ToString();

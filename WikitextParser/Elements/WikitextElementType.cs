@@ -10,10 +10,12 @@ public enum WikitextElementType
     KeyValuePair,
     Paragraph,
     Template,
+    TemplateParameter,
     Link,
     Bold,
     Italic,
     Ref,
     Comment,
-    Heading
+    Heading,
+    Category
 }

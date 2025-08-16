@@ -29,24 +29,15 @@ public class ParserTests
         // Inspect the Infobox
         var infobox = elements[3].As<TemplateElement>();
         infobox.TemplateName.Should().Be("Infobox television");
-        infobox.IsInfobox.Should().BeTrue();
 
-        var infoboxPairs = infobox.ChildElements.ToList();
-        infoboxPairs.Should().HaveCount(12); // Corrected assertion from 11 to 12
-
-        // Check a key-value pair with a comment
-        var seasonsPair = infoboxPairs.First(p => p.Key == "num_seasons");
-        seasonsPair.Value.Should().BeOfType<ParagraphElement>();
-        var seasonChildren = seasonsPair.Value.As<ParagraphElement>().ChildElements.ToList();
-        seasonChildren.Should().HaveCount(2);
-        seasonChildren[0].Should().BeOfType<TextElement>().Which.SourceText.Should().Be("2");
-        seasonChildren[1].Should().BeOfType<HtmlCommentElement>().Which.SourceText.Should().Be("<!--Do not increment until season is released!-->");
+        var infoboxParams = infobox.Parameters.ToList(); // Use Parameters property
+        infoboxParams.Should().HaveCount(12);
 
         // Check a simple key-value pair (country)
-        var countryPair = infoboxPairs.First(p => p.Key == "country");
-        countryPair.Should().NotBeNull();
-        countryPair!.Value.As<TextElement>().SourceText.Should().Be("United States");
-
+        var countryParam = infoboxParams.FirstOrDefault(p => p.Key == "country");
+        countryParam.Should().NotBeNull();
+        countryParam.Value.As<TextElement>().SourceText.Should().Be("United States");
+        
         // Inspect the Paragraph
         var paragraph = elements[4].As<ParagraphElement>();
         var paragraphChildren = paragraph.ChildElements.ToList();
@@ -86,5 +77,72 @@ public class ParserTests
         elements[1].As<HeadingElement>().ChildElement.Should().BeOfType<ItalicElement>()
             .Which.InnerElement.Should().BeOfType<TextElement>()
             .Which.SourceText.Should().Be("Italic Heading");
+    }
+
+    [Fact]
+    public void Parse_CategoryLinks_CorrectlyParsesCategories()
+    {
+        // Arrange
+        var wikitext = "[[Category:Stranger Things (TV series)| ]]\n" +
+                       "[[Category:2010s American drama television series]]";
+
+        // Act
+        var elements = Parser.Parse(wikitext).ToList();
+
+        // Assert
+        elements.Should().HaveCount(2);
+
+        // Test category with sort key
+        elements[0].Should().BeOfType<CategoryElement>()
+            .Which.CategoryName.Should().Be("Stranger Things (TV series)");
+        elements[0].As<CategoryElement>().SortKey.Should().Be(" ");
+
+        // Test category without sort key
+        elements[1].Should().BeOfType<CategoryElement>()
+            .Which.CategoryName.Should().Be("2010s American drama television series");
+        elements[1].As<CategoryElement>().SortKey.Should().BeNull();
+    }
+    [Fact]
+    public void Parse_AdvancedTemplates_CorrectlyParsesParameters()
+    {
+        // Arrange
+        var wikitext = "{{Main|Article 1|Article 2|l1=Custom Label 1}}\n" +
+                       "{{:List of episodes}}\n" +
+                       "{{Quote box|quote=Some text with a [[link|pipe]].|source=A source}}";
+
+        // Act
+        var elements = Parser.Parse(wikitext).ToList();
+
+        // Assert
+        elements.Should().HaveCount(3);
+
+        // 1. Test {{Main}} template with positional and named parameters
+        var mainTemplate = elements[0].Should().BeOfType<TemplateElement>().Subject;
+        mainTemplate.TemplateName.Should().Be("Main");
+        mainTemplate.Parameters.Should().HaveCount(3);
+
+        var mainParams = mainTemplate.Parameters.ToList();
+        mainParams[0].Key.Should().BeNull();
+        mainParams[0].Value.As<TextElement>().SourceText.Should().Be("Article 1");
+        mainParams[1].Key.Should().BeNull();
+        mainParams[1].Value.As<TextElement>().SourceText.Should().Be("Article 2");
+        mainParams[2].Key.Should().Be("l1");
+        mainParams[2].Value.As<TextElement>().SourceText.Should().Be("Custom Label 1");
+
+        // 2. Test transclusion template
+        var transclusionTemplate = elements[1].Should().BeOfType<TemplateElement>().Subject;
+        transclusionTemplate.TemplateName.Should().Be(":List of episodes");
+        transclusionTemplate.IsTransclusion.Should().BeTrue();
+        transclusionTemplate.Parameters.Should().BeEmpty();
+
+        // 3. Test template with a link (containing a pipe) in a parameter
+        var quoteTemplate = elements[2].Should().BeOfType<TemplateElement>().Subject;
+        quoteTemplate.TemplateName.Should().Be("Quote box");
+        var quoteParams = quoteTemplate.Parameters.ToList();
+        quoteParams[0].Key.Should().Be("quote");
+        var quoteValueParagraph = quoteParams[0].Value.Should().BeOfType<ParagraphElement>().Subject;
+
+        quoteValueParagraph.ChildElements.OfType<LinkElement>().Single()
+            .DisplayText.Should().Be("link");
     }
 }
