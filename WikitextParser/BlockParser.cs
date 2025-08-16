@@ -42,6 +42,9 @@ internal static class BlockParser
     internal static bool TryParseTable(string sourceText, ref int i, out TableElement? table)
     {
         table = null;
+        // **FIX**: Add a check to ensure we are actually at the start of a table.
+        if (!sourceText.Substring(i).StartsWith("{|")) return false;
+
         int start = i;
         int end = ParserUtils.FindMatchingDelimiters(sourceText, start, "{|", "|}");
         if (end == -1) return false;
