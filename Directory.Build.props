@@ -1,0 +1,5 @@
+<Project>
+    <PropertyGroup>
+        <NoWarn>VSSpell001</NoWarn>
+    </PropertyGroup>
+</Project>
