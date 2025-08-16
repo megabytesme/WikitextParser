@@ -19,7 +19,8 @@ public class TableCellElement : WikitextElement
     public override string ConvertToHtml()
     {
         var tag = IsHeader ? "th" : "td";
-        return $"<{tag} {(string.IsNullOrEmpty(Attributes) ? "" : " " + Attributes)}>{Content.ConvertToHtml()}</{tag}>";
+        var attributesPart = string.IsNullOrEmpty(Attributes) ? "" : " " + Attributes;
+        return $"<{tag}{attributesPart}>{Content.ConvertToHtml()}</{tag}>";
     }
 
     public override string ConvertToText() => Content.ConvertToText();

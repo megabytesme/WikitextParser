@@ -20,7 +20,8 @@ public class TableRowElement : WikitextElement
     public override string ConvertToHtml()
     {
         var sb = new StringBuilder();
-        sb.Append($"<tr {(string.IsNullOrEmpty(Attributes) ? "" : " " + Attributes)}>");
+        var attributesPart = string.IsNullOrEmpty(Attributes) ? "" : " " + Attributes;
+        sb.Append($"<tr{attributesPart}>");
         foreach (var cell in Cells)
         {
             sb.Append(cell.ConvertToHtml());
