@@ -17,5 +17,8 @@ public enum WikitextElementType
     Ref,
     Comment,
     Heading,
-    Category
+    Category,
+    Table,
+    TableRow,
+    TableCell
 }

@@ -19,7 +19,7 @@ public class TemplateElement : WikitextElement
     public required string TemplateName { get; init; }
 
     public IEnumerable<TemplateParameterElement> Parameters =>
-        _parameters ??= Parser.ParseTemplateParameters(this).ToImmutableList();
+        _parameters ??= TemplateParser.ParseTemplateParameters(this).ToImmutableList();
 
     public bool IsPlainlist => TemplateName.StartsWith("Plainlist|");
 
@@ -38,7 +38,7 @@ public class TemplateElement : WikitextElement
             return [];
         }
 
-        return _plainListElements ??= Parser.ParsePlainList(this).ToImmutableList();
+        return _plainListElements ??= TemplateParser.ParsePlainList(this).Select(e => e!).ToImmutableList();
     }
 
     public override string ConvertToHtml()
@@ -49,7 +49,6 @@ public class TemplateElement : WikitextElement
                 .Select(e => $"<li>{e.ConvertToHtml()}</li>");
             return $"<ul>{string.Concat(items)}</ul>";
         }
-        
         return "";
     }
 

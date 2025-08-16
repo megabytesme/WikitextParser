@@ -215,4 +215,53 @@ public class ParserTests
         var image2 = para2_2.ChildElements.First().Should().BeOfType<ImageElement>().Subject;
         image2.FileName.Should().Be("Another.png");
     }
+
+    [Fact]
+    public void Parse_Tables_CorrectlyParsesStructure()
+    {
+        // Arrange
+        var wikitext =
+            "{| class=\"wikitable\" style=\"text-align: center\"\n" +
+            "|-\n" +
+            "! Header 1 !! Header 2\n" +
+            "|-\n" +
+            "| rowspan=\"2\" | Cell A1/B1\n" +
+            "| Cell A2 with [[a link]]\n" +
+            "|-\n" +
+            "| Cell B2\n" +
+            "|}";
+
+        // Act
+        var elements = Parser.Parse(wikitext).ToList();
+
+        // Assert
+        // **FIXED ASSERTION**: The chain is broken into two separate, clearer steps.
+        elements.Should().ContainSingle();
+        var table = elements.First().Should().BeOfType<TableElement>().Subject;
+
+        table.Attributes.Should().Be("class=\"wikitable\" style=\"text-align: center\"");
+        table.Rows.Should().HaveCount(3);
+
+        // Row 1 (Headers)
+        var row1 = table.Rows[0];
+        row1.Cells.Should().HaveCount(2);
+        row1.Cells[0].IsHeader.Should().BeTrue();
+        row1.Cells[0].Content.As<TextElement>().SourceText.Should().Be("Header 1");
+        row1.Cells[1].IsHeader.Should().BeTrue();
+        row1.Cells[1].Content.As<TextElement>().SourceText.Should().Be("Header 2");
+
+        // Row 2
+        var row2 = table.Rows[1];
+        row2.Cells.Should().HaveCount(2);
+        row2.Cells[0].IsHeader.Should().BeFalse();
+        row2.Cells[0].Attributes.Should().Be("rowspan=\"2\"");
+        row2.Cells[0].Content.As<TextElement>().SourceText.Should().Be("Cell A1/B1");
+        row2.Cells[1].Content.As<ParagraphElement>().ChildElements.OfType<LinkElement>().Single().Url.Should().Be("a link");
+
+        // Row 3
+        var row3 = table.Rows[2];
+        row3.Cells.Should().ContainSingle();
+        row3.Cells[0].IsHeader.Should().BeFalse();
+        row3.Cells[0].Content.As<TextElement>().SourceText.Should().Be("Cell B2");
+    }
 }
