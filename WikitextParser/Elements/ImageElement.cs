@@ -1,5 +1,8 @@
 ﻿namespace WikitextParser.Elements;
 
+/// <summary>
+/// Usually part of template with key value pairs as: image, image_alt, image2, image_alt2, ...
+/// </summary>
 public class ImageElement : WikitextElement
 {
     private string? _wikimediaLink;

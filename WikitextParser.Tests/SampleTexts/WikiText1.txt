@@ -1,0 +1,31 @@
+{{Short description|Fictional television series}}
+{{About|the fictional television series}}
+{{Use American English|date=January 2024}}
+{{Infobox television
+| image                = Mystery_Grove_logo.png
+| alt                  = "Mystery Grove" text written in dark green on a black background
+| genre                = {{Plainlist|
+* [[Science fiction on television|Sci-Fi]]
+* [[Horror fiction|Horror]]
+* [[Mystery film|Mystery]]
+}}
+| creator              = [[The Creator Siblings]]
+| starring             = {{Plainlist|
+* [[Jane Doe]]
+* [[John Smith]]
+* [[Finn Fish]]
+* [[Millie Brown]]
+}}
+| composer             = {{Plainlist|
+* [[Michael Rock]]
+* [[Kyle Dixon]]
+}}
+| country              = United States
+| language             = English
+| num_seasons          = 2<!--Do not increment until season is released!-->
+| num_episodes         = 18
+| network              = [[StreamFlix]]
+| first_aired          = {{Start date|2022|1|15}}
+}}
+
+'''''Mystery Grove''''' is a fictional American television series created by the [[Creator Siblings]] for [[StreamFlix]]. Produced by Fictional Productions and [[First Ave Entertainment]], the first season was released on StreamFlix on January 15, 2022. The second season followed in March 2023.<!--A third season is planned.--> The show is a mix of the [[Horror fiction|horror]], [[Drama (film and television)|drama]], and [[Science fiction|science-fiction]] genres.

@@ -1,5 +1,8 @@
 ﻿namespace WikitextParser.Elements;
 
+/// <summary>
+/// Element types
+/// </summary>
 public enum WikitextElementType
 {
     Text,
@@ -9,5 +12,7 @@ public enum WikitextElementType
     Template,
     Link,
     Bold,
-    Italic
+    Italic,
+    Ref,
+    Comment
 }

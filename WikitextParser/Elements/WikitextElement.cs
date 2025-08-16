@@ -2,6 +2,9 @@
 
 namespace WikitextParser.Elements;
 
+/// <summary>
+/// Abstract base class for all element types
+/// </summary>
 [DebuggerDisplay("{ToDebugString()}")]
 public abstract class WikitextElement
 {

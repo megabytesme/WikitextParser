@@ -1,5 +1,9 @@
 ﻿namespace WikitextParser.Elements;
 
+/// <summary>
+/// Bold element, starts with three single quotes, '''.
+/// In cases when bold and italic are in single element five single quotes are used and bold is child of italic element.
+/// </summary>
 public class BoldElement : WikitextElement
 {
     public WikitextElement InnerElement { get; }

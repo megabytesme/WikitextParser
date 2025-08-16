@@ -1,5 +1,8 @@
 ﻿namespace WikitextParser.Elements;
 
+/// <summary>
+/// Key value pair, starts with {{Key|Value}} value doesn't have to be plain text, it can be e.g. template
+/// </summary>
 public class WikiKeyValuePairElement : WikitextElement
 {
     public string Key { get; }

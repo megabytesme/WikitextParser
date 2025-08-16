@@ -1,5 +1,8 @@
 ﻿namespace WikitextParser.Elements;
 
+/// <summary>
+/// Link element, in format [[Url]] or [[DisplayText|Url]]
+/// </summary>
 public class LinkElement : WikitextElement
 {
     public string DisplayText { get; }
