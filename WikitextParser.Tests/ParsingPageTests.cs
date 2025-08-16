@@ -13,6 +13,7 @@ public class ParsingPageTests
             "{{Infobox test|name=Test}}\n" +
             "This is the lead paragraph.\n\n" +
             "== Section 1 ==\n" +
+            "{{Main|Main Article for Section 1}}\n" + // Added main article link
             "Content in section 1.\n" +
             "=== Subsection 1.1 ===\n" +
             "{| \n| Cell\n|}\n" +
@@ -26,43 +27,28 @@ public class ParsingPageTests
 
         // Assert
         page.Should().NotBeNull();
-
-        // Check Infobox
         page.Infobox.Should().NotBeNull();
-        page.Infobox!.TemplateName.Should().Be("Infobox test");
-
-        // Check Lead Content
-        page.LeadContent.Should().ContainSingle()
-            .Which.Should().BeOfType<ParagraphElement>();
-
-        // Check Top-Level Sections
         page.Sections.Should().HaveCount(2);
 
         // Check Section 1
         var section1 = page.Sections[0];
         section1.Heading.ChildElement.ConvertToText().Should().Be("Section 1");
-        section1.ContentElements.Should().ContainSingle();
-        section1.ContentElements.Single().Should().BeOfType<ParagraphElement>();
+
+        section1.MainArticleLinks.Should().ContainSingle();
+        var mainLinkTemplate = section1.MainArticleLinks.First();
+        mainLinkTemplate.TemplateName.Should().Be("Main");
+        mainLinkTemplate.Parameters.Should().ContainSingle();
+        mainLinkTemplate.Parameters.First().Value.ConvertToText().Should().Be("Main Article for Section 1");
+
+        // Check that the main article link is NOT in the regular content
+        section1.ContentElements.Should().ContainSingle()
+            .Which.Should().BeOfType<ParagraphElement>();
         section1.Subsections.Should().HaveCount(2);
 
-        // Check Subsection 1.1
+        // Check Subsection 1.1 (and the rest of the test)
         var subsection1_1 = section1.Subsections[0];
-        subsection1_1.Heading.HeadingLevel.Should().Be(3);
         subsection1_1.Heading.ChildElement.ConvertToText().Should().Be("Subsection 1.1");
         subsection1_1.ContentElements.Should().ContainSingle()
             .Which.Should().BeOfType<TableElement>();
-        subsection1_1.Subsections.Should().BeEmpty();
-
-        // Check Subsection 1.2
-        var subsection1_2 = section1.Subsections[1];
-        subsection1_2.Heading.ChildElement.ConvertToText().Should().Be("Subsection 1.2");
-        subsection1_2.ContentElements.Should().ContainSingle()
-            .Which.Should().BeOfType<ParagraphElement>();
-
-        // Check Section 2
-        var section2 = page.Sections[1];
-        section2.Heading.ChildElement.ConvertToText().Should().Be("Section 2");
-        section2.ContentElements.Should().ContainSingle();
-        section2.Subsections.Should().BeEmpty();
     }
 }

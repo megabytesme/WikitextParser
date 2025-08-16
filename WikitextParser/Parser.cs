@@ -5,11 +5,19 @@ namespace WikitextParser;
 
 public static class Parser
 {
+    private static readonly HashSet<string> _mainArticleTemplates = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Main",
+        "See also"
+    };
+
+
     /// <summary>
-    /// Low level API that will return page elements, consider using higher level API for parsing pages <see cref="ParsePage"/>
+    /// Low-level API that parses a wikitext string into a flat list of elements.
+    /// For a more structured output, consider using the higher-level <see cref="ParsePage"/> method.
     /// </summary>
-    /// <param name="sourceText">Wikitext source string</param>
-    /// <returns>Collection of <see cref="WikitextElement"/></returns>
+    /// <param name="sourceText">The raw wikitext source string to parse.</param>
+    /// <returns>An enumerable collection of the top-level <see cref="WikitextElement"/> objects found in the source text.</returns>
     public static IEnumerable<WikitextElement> Parse(string sourceText)
     {
         sourceText = sourceText.ReplaceLineEndings("\n");
@@ -51,8 +59,10 @@ public static class Parser
                         var parts = ParserUtils.SplitAtTopLevel(innerText, '|').ToList();
                         string potentialKey = parts.FirstOrDefault()?.Trim() ?? "";
 
-                        // **FIXED LOGIC**: Added a check to ensure it's not an Infobox.
-                        if (parts.Count == 2 && !potentialKey.StartsWith("Infobox", StringComparison.OrdinalIgnoreCase))
+                        // **FIXED LOGIC**: Also check that it's not a main article link template.
+                        if (parts.Count == 2
+                            && !potentialKey.StartsWith("Infobox", StringComparison.OrdinalIgnoreCase)
+                            && !_mainArticleTemplates.Contains(potentialKey))
                         {
                             string key = parts[0].Trim();
                             string valueSource = parts[1].Trim();
@@ -81,10 +91,11 @@ public static class Parser
     }
 
     /// <summary>
-    /// Parses wikitext into a high-level, structured Page object.
+    /// High-level API that parses a wikitext string into a structured <see cref="Page"/> object.
+    /// This method organizes the content into a lead section, an infobox, and a hierarchy of sections and subsections.
     /// </summary>
     /// <param name="sourceText">The wikitext of the entire page.</param>
-    /// <returns>A Page object representing the structured document.</returns>
+    /// <returns>A <see cref="Page"/> object representing the structured document.</returns>
     public static Page ParsePage(string sourceText)
     {
         var allElements = Parse(sourceText).ToList();
@@ -112,49 +123,49 @@ public static class Parser
                 continue;
             }
 
-            // Find where this section's content block ends. 
-            // It ends at the next heading of the same or a higher level.
             int endOfSectionBlock = elements.FindIndex(i + 1, e => e is HeadingElement h && h.HeadingLevel <= level);
             if (endOfSectionBlock == -1)
             {
                 endOfSectionBlock = elements.Count;
             }
 
-            // This list contains all content and all potential subsections for the current heading.
             var sectionBlock = elements.Skip(i + 1).Take(endOfSectionBlock - (i + 1)).ToList();
-
-            // Find the start of the first subsection inside this block.
             int firstSubheadingIndex = sectionBlock.FindIndex(e => e is HeadingElement h && h.HeadingLevel > level);
 
-            List<WikitextElement> directContent;
-            List<Section> subsections;
+            List<WikitextElement> contentBeforeSubsections;
+            List<WikitextElement> subsectionElements;
 
             if (firstSubheadingIndex == -1)
             {
-                // No subsections found, so the entire block is this section's direct content.
-                directContent = sectionBlock;
-                subsections = new List<Section>();
+                contentBeforeSubsections = sectionBlock;
+                subsectionElements = new List<WikitextElement>();
             }
             else
             {
-                // The direct content is everything before the first subsection starts.
-                directContent = sectionBlock.Take(firstSubheadingIndex).ToList();
-                // The elements for the next recursive call are the first subheading and everything after it.
-                var subsectionElements = sectionBlock.Skip(firstSubheadingIndex).ToList();
-                subsections = BuildSectionHierarchy(subsectionElements, level + 1);
+                contentBeforeSubsections = sectionBlock.Take(firstSubheadingIndex).ToList();
+                subsectionElements = sectionBlock.Skip(firstSubheadingIndex).ToList();
             }
 
-            sections.Add(new Section(heading, directContent, subsections));
+            var mainArticleLinks = contentBeforeSubsections
+                .OfType<TemplateElement>()
+                .Where(t => _mainArticleTemplates.Contains(t.TemplateName))
+                .ToList();
+
+            var directContent = contentBeforeSubsections
+                .Where(e => !(e is TemplateElement te && mainArticleLinks.Contains(te)))
+                .ToList();
+
+            var subsections = BuildSectionHierarchy(subsectionElements, level + 1);
+
+            sections.Add(new Section(heading, mainArticleLinks, directContent, subsections));
             i = endOfSectionBlock;
         }
-
         return sections;
     }
-    
+
     private static int FindEndOfParagraph(string sourceText, int currentIndex)
     {
         int endOfParagraph = sourceText.Length;
-
         int[] nextBlockStarts =
         {
             sourceText.IndexOf("\n\n", currentIndex, StringComparison.Ordinal),
@@ -163,8 +174,7 @@ public static class Parser
             sourceText.IndexOf("\n[[Category:", currentIndex, StringComparison.OrdinalIgnoreCase),
             sourceText.IndexOf("\n==", currentIndex, StringComparison.Ordinal)
         };
-
-        foreach (int index in nextBlockStarts)
+        foreach (var index in nextBlockStarts)
         {
             if (index != -1)
             {

@@ -1,6 +1,6 @@
-﻿using System.Collections.Immutable;
+﻿using WikitextParser.Elements;
+using System.Collections.Immutable;
 using System.Text;
-using WikitextParser.Elements;
 
 namespace WikitextParser.Models;
 
@@ -15,7 +15,12 @@ public class Section
     public HeadingElement Heading { get; }
 
     /// <summary>
-    /// The direct content of this section, excluding subsections.
+    /// A list of templates, like {{Main|...}}, that appear at the start of the section.
+    /// </summary>
+    public IReadOnlyList<TemplateElement> MainArticleLinks { get; }
+
+    /// <summary>
+    /// The direct content of this section, excluding main article links and subsections.
     /// </summary>
     public IReadOnlyList<WikitextElement> ContentElements { get; }
 
@@ -24,20 +29,30 @@ public class Section
     /// </summary>
     public IReadOnlyList<Section> Subsections { get; }
 
-    internal Section(HeadingElement heading, IEnumerable<WikitextElement> contentElements, IEnumerable<Section> subsections)
+    internal Section(HeadingElement heading, IEnumerable<TemplateElement> mainArticleLinks, IEnumerable<WikitextElement> contentElements, IEnumerable<Section> subsections)
     {
         Heading = heading;
+        MainArticleLinks = mainArticleLinks.ToImmutableList();
         ContentElements = contentElements.ToImmutableList();
         Subsections = subsections.ToImmutableList();
     }
 
-    /// <summary>
-    /// Converts the entire section, including its subsections, to HTML.
-    /// </summary>
     public string ConvertToHtml()
     {
         var sb = new StringBuilder();
         sb.Append(Heading.ConvertToHtml());
+
+        if (MainArticleLinks.Any())
+        {
+            sb.Append("<div class=\"main-article-links\">");
+            foreach (var linkTemplate in MainArticleLinks)
+            {
+                var links = linkTemplate.Parameters.Select(p => p.Value.ConvertToHtml());
+                sb.Append($"<p><i>{linkTemplate.TemplateName}: {string.Join(", ", links)}</i></p>");
+            }
+            sb.Append("</div>");
+        }
+
         foreach (var element in ContentElements)
         {
             sb.Append(element.ConvertToHtml());
@@ -49,13 +64,20 @@ public class Section
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Converts the entire section, including its subsections, to plain text.
-    /// </summary>
     public string ConvertToText()
     {
         var sb = new StringBuilder();
         sb.Append(Heading.ConvertToText());
+
+        if (MainArticleLinks.Any())
+        {
+            foreach (var linkTemplate in MainArticleLinks)
+            {
+                var links = linkTemplate.Parameters.Select(p => p.Value.ConvertToText());
+                sb.Append($"{linkTemplate.TemplateName}: {string.Join(", ", links)}\n\n");
+            }
+        }
+
         foreach (var element in ContentElements)
         {
             sb.Append(element.ConvertToText());
