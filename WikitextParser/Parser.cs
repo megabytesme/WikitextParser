@@ -17,6 +17,12 @@ public static class Parser
             }
             if (currentIndex >= sourceText.Length) break;
 
+            if (TryParseHeading(sourceText, ref currentIndex, out var heading))
+            {
+                yield return heading!;
+                continue;
+            }
+
             if (sourceText.Substring(currentIndex).StartsWith("{{"))
             {
                 int end = FindMatchingDelimiters(sourceText, currentIndex, "{{", "}}");
@@ -49,24 +55,63 @@ public static class Parser
                 }
             }
 
-            int nextTemplateStart = sourceText.IndexOf("{{", currentIndex, StringComparison.Ordinal);
-            int endOfParagraph = (nextTemplateStart != -1) ? nextTemplateStart : sourceText.Length;
+            int endOfParagraph = sourceText.Length;
+
+            int nextTemplateStart = sourceText.IndexOf("{{", currentIndex);
+            if (nextTemplateStart != -1)
+            {
+                endOfParagraph = nextTemplateStart;
+            }
+
+            int nextHeadingStart = sourceText.IndexOf("\n=", currentIndex);
+            if (nextHeadingStart != -1)
+            {
+                endOfParagraph = Math.Min(endOfParagraph, nextHeadingStart + 1);
+            }
 
             string paragraphSource = sourceText.Substring(currentIndex, endOfParagraph - currentIndex).Trim();
             if (!string.IsNullOrEmpty(paragraphSource))
             {
-                IEnumerable<WikitextElement?> elements = ParseInline(paragraphSource).ToArray();
-
-                if (elements.Any(x => x is null))
-                {
-                    throw new InvalidOperationException("Failed to parse element");
-                }
-
                 yield return new ParagraphElement(paragraphSource, ParseInline(paragraphSource).Select(x => x!));
             }
 
             currentIndex = endOfParagraph;
         }
+    }
+
+    private static bool TryParseHeading(string text, ref int currentIndex, out HeadingElement? heading)
+    {
+        heading = null;
+        int i = currentIndex;
+
+        if (i > 0 && text[i - 1] != '\n') return false;
+
+        int level = 0;
+        while (i < text.Length && text[i] == '=')
+        {
+            level++;
+            i++;
+        }
+
+        if (level < 2) return false;
+
+        int endOfLine = text.IndexOf('\n', i);
+        if (endOfLine == -1)
+        {
+            endOfLine = text.Length;
+        }
+
+        string lineContent = text.Substring(i, endOfLine - i);
+        string innerText = lineContent.TrimEnd('=').Trim();
+
+        if (string.IsNullOrEmpty(innerText)) return false;
+
+        string sourceText = text.Substring(currentIndex, endOfLine - currentIndex);
+        var childElement = ParseInline(innerText).FirstOrDefault() ?? new TextElement(innerText);
+
+        heading = new HeadingElement(sourceText, level, childElement);
+        currentIndex = endOfLine;
+        return true;
     }
 
     internal static IEnumerable<WikitextElement?> ParsePlainList(TemplateElement template)

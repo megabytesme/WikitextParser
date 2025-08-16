@@ -62,4 +62,29 @@ public class ParserTests
         comment.Should().NotBeNull();
         comment.Should().BeOfType<HtmlCommentElement>().Which.SourceText.Should().Be("<!--A third season is planned.-->");
     }
+
+    [Fact]
+    public void Parse_Headings_CorrectlyParsesSimpleAndItalicHeadings()
+    {
+        // Arrange
+        var wikitext = "==Simple Heading==\n" +
+                       "=== ''Italic Heading'' ===";
+
+        // Act
+        var elements = Parser.Parse(wikitext).ToList();
+
+        // Assert
+        elements.Should().HaveCount(2);
+
+        // Test simple H2 heading
+        elements[0].Should().BeOfType<HeadingElement>().Which.HeadingLevel.Should().Be(2);
+        elements[0].As<HeadingElement>().ChildElement.Should().BeOfType<TextElement>()
+            .Which.SourceText.Should().Be("Simple Heading");
+
+        // Test italic H3 heading
+        elements[1].Should().BeOfType<HeadingElement>().Which.HeadingLevel.Should().Be(3);
+        elements[1].As<HeadingElement>().ChildElement.Should().BeOfType<ItalicElement>()
+            .Which.InnerElement.Should().BeOfType<TextElement>()
+            .Which.SourceText.Should().Be("Italic Heading");
+    }
 }

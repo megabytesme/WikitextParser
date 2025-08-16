@@ -14,5 +14,6 @@ public enum WikitextElementType
     Bold,
     Italic,
     Ref,
-    Comment
+    Comment,
+    Heading
 }
