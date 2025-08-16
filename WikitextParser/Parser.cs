@@ -428,7 +428,6 @@ public static class Parser
             string? key = null;
             string valueSource;
 
-            // ***** CORRECTED LOGIC HERE *****
             int equalsIndex = trimmedParam.IndexOf('=');
             if (equalsIndex > 0)
             {
@@ -439,8 +438,7 @@ public static class Parser
             {
                 valueSource = trimmedParam;
             }
-            // ***** END OF CORRECTION *****
-
+            
             var parsedValueElements = ParseInline(valueSource).ToList();
             WikitextElement valueElement;
 
