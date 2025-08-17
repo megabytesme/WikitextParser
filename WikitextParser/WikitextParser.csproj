@@ -4,10 +4,30 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Version>0.0.1</Version>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Authors>stanac</Authors>
+		<Description>A lightweight, dependency-free .NET library for parsing Wikipedia's wikitext markup into a structured object model with both low-level and high-level APIs.</Description>
+
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+		<RepositoryUrl>https://github.com/stanac/WikitextParser</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>wiki;wikipedia;parser;wikitext;wikicode;markup;</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="WikitextParser.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>
 
 </Project>
