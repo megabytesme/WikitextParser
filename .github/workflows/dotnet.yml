@@ -30,12 +30,18 @@ jobs:
     - name: Run tests
       run: dotnet test WikitextParser.Tests --configuration Release --no-build --verbosity normal
 
+    - name: Sanitize Ref Name for Artifact
+      id: sanitize
+      run: |
+        sanitized_name=$(echo "${{ github.ref_name }}" | tr -s ',"<>:|*?\\/\r\n' '-')
+        echo "name=${sanitized_name}" >> $GITHUB_OUTPUT
+
     - name: Pack NuGet Package
       run: dotnet pack WikitextParser/WikitextParser.csproj --configuration Release --output ${{ github.workspace }}/nuget_packages --no-build
 
     - name: Upload Package Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WikitextParser-Package-${{ github.ref_name }}-${{ github.sha }}
+        name: WikitextParser-Package-${{ steps.sanitize.outputs.name }}-${{ github.sha }}
         path: ${{ github.workspace }}/nuget_packages/*.nupkg
         if-no-files-found: error
