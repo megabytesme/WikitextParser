@@ -1,32 +1,33 @@
-﻿namespace WikitextParser.Elements;
-
-/// <summary>
-/// Ref element, starts with xml open tag "ref" and ends with xml close tag "ref"
-/// Can be named and/or self-closing.
-/// </summary>
-public class RefElement : WikitextElement
+﻿namespace WikitextParser.Elements
 {
-    public string? Name { get; }
-    public WikitextElement? ChildElement { get; }
-
-    public RefElement(string sourceText, WikitextElement? childElement, string? name) : base(WikitextElementType.Ref, sourceText)
+    /// <summary>
+    /// Ref element, starts with xml open tag "ref" and ends with xml close tag "ref"
+    /// Can be named and/or self-closing.
+    /// </summary>
+    public class RefElement : WikitextElement
     {
-        ChildElement = childElement;
-        Name = name;
-    }
+        public string Name { get; }
+        public WikitextElement ChildElement { get; }
 
-    public override string ConvertToHtml()
-    {
-        int refIndex = Name?.GetHashCode() ?? SourceText.GetHashCode();
-        return $"<sup><a href=\"#ref-{refIndex}\">[{Math.Abs(refIndex % 100)}]</a></sup>";
-    }
+        public RefElement(string sourceText, WikitextElement childElement, string name) : base(WikitextElementType.Ref, sourceText)
+        {
+            ChildElement = childElement;
+            Name = name;
+        }
 
-    public override string ConvertToText() => ""; // References are metadata
+        public override string ConvertToHtml()
+        {
+            int refIndex = Name?.GetHashCode() ?? SourceText.GetHashCode();
+            return $"<sup><a href=\"#ref-{refIndex}\">[{System.Math.Abs(refIndex % 100)}]</a></sup>";
+        }
 
-    protected internal override string ToDebugString()
-    {
-        var namePart = Name != null ? $" Name: {Name}" : "";
-        var childPart = ChildElement != null ? $" | {ChildElement.ToDebugString()}" : "";
-        return $"Ref:{namePart}{childPart}";
+        public override string ConvertToText() => ""; // References are metadata
+
+        protected internal override string ToDebugString()
+        {
+            var namePart = Name != null ? $" Name: {Name}" : "";
+            var childPart = ChildElement != null ? $" | {ChildElement.ToDebugString()}" : "";
+            return $"Ref:{namePart}{childPart}";
+        }
     }
 }

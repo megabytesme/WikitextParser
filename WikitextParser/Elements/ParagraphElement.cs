@@ -1,36 +1,39 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
-namespace WikitextParser.Elements;
-
-/// <summary>
-/// Paragraph, text separated by empty line that is not of another element type
-/// </summary>
-public class ParagraphElement : WikitextElement
+namespace WikitextParser.Elements
 {
-    public ParagraphElement(string sourceText, IEnumerable<WikitextElement> childElements) : base(WikitextElementType.Paragraph, sourceText)
+    /// <summary>
+    /// Paragraph, text separated by empty line that is not of another element type
+    /// </summary>
+    public class ParagraphElement : WikitextElement
     {
-        ChildElements = childElements.ToImmutableList();
-    }
-
-    public IEnumerable<WikitextElement> ChildElements { get; }
-    
-    public override string ConvertToHtml() => $"<p>{string.Concat(ChildElements.Select(c => c.ConvertToHtml()))}</p>";
-
-    public override string ConvertToText() => $"{string.Concat(ChildElements.Select(c => c.ConvertToText()))}\n\n";
-
-    protected internal override string ToDebugString()
-    {
-        StringBuilder sb = new();
-        sb.Append("Paragraph: ");
-
-        foreach (WikitextElement child in ChildElements)
+        public ParagraphElement(string sourceText, IEnumerable<WikitextElement> childElements) : base(WikitextElementType.Paragraph, sourceText)
         {
-            {
-                sb.Append(child.ToDebugString());
-            }
+            ChildElements = childElements.ToImmutableList();
         }
 
-        return sb.ToString();
+        public IEnumerable<WikitextElement> ChildElements { get; }
+
+        public override string ConvertToHtml() => $"<p>{string.Concat(ChildElements.Select(c => c.ConvertToHtml()))}</p>";
+
+        public override string ConvertToText() => $"{string.Concat(ChildElements.Select(c => c.ConvertToText()))}\n\n";
+
+        protected internal override string ToDebugString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("Paragraph: ");
+
+            foreach (WikitextElement child in ChildElements)
+            {
+                {
+                    sb.Append(child.ToDebugString());
+                }
+            }
+
+            return sb.ToString();
+        }
     }
 }

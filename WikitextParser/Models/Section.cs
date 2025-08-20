@@ -1,91 +1,94 @@
 ﻿using WikitextParser.Elements;
 using System.Collections.Immutable;
 using System.Text;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace WikitextParser.Models;
-
-/// <summary>
-/// Represents a section of a wiki page, defined by a heading and containing content and subsections.
-/// </summary>
-public class Section
+namespace WikitextParser.Models
 {
     /// <summary>
-    /// The heading element that defines this section.
+    /// Represents a section of a wiki page, defined by a heading and containing content and subsections.
     /// </summary>
-    public HeadingElement Heading { get; }
-
-    /// <summary>
-    /// A list of templates, like {{Main|...}}, that appear at the start of the section.
-    /// </summary>
-    public IReadOnlyList<TemplateElement> MainArticleLinks { get; }
-
-    /// <summary>
-    /// The direct content of this section, excluding main article links and subsections.
-    /// </summary>
-    public IReadOnlyList<WikitextElement> ContentElements { get; }
-
-    /// <summary>
-    /// A list of nested sections within this section.
-    /// </summary>
-    public IReadOnlyList<Section> Subsections { get; }
-
-    internal Section(HeadingElement heading, IEnumerable<TemplateElement> mainArticleLinks, IEnumerable<WikitextElement> contentElements, IEnumerable<Section> subsections)
+    public class Section
     {
-        Heading = heading;
-        MainArticleLinks = mainArticleLinks.ToImmutableList();
-        ContentElements = contentElements.ToImmutableList();
-        Subsections = subsections.ToImmutableList();
-    }
+        /// <summary>
+        /// The heading element that defines this section.
+        /// </summary>
+        public HeadingElement Heading { get; }
 
-    public string ConvertToHtml()
-    {
-        var sb = new StringBuilder();
-        sb.Append(Heading.ConvertToHtml());
+        /// <summary>
+        /// A list of templates, like {{Main|...}}, that appear at the start of the section.
+        /// </summary>
+        public IReadOnlyList<TemplateElement> MainArticleLinks { get; }
 
-        if (MainArticleLinks.Any())
+        /// <summary>
+        /// The direct content of this section, excluding main article links and subsections.
+        /// </summary>
+        public IReadOnlyList<WikitextElement> ContentElements { get; }
+
+        /// <summary>
+        /// A list of nested sections within this section.
+        /// </summary>
+        public IReadOnlyList<Section> Subsections { get; }
+
+        internal Section(HeadingElement heading, IEnumerable<TemplateElement> mainArticleLinks, IEnumerable<WikitextElement> contentElements, IEnumerable<Section> subsections)
         {
-            sb.Append("<div class=\"main-article-links\">");
-            foreach (var linkTemplate in MainArticleLinks)
+            Heading = heading;
+            MainArticleLinks = mainArticleLinks.ToImmutableList();
+            ContentElements = contentElements.ToImmutableList();
+            Subsections = subsections.ToImmutableList();
+        }
+
+        public string ConvertToHtml()
+        {
+            var sb = new StringBuilder();
+            sb.Append(Heading.ConvertToHtml());
+
+            if (MainArticleLinks.Any())
             {
-                var links = linkTemplate.Parameters.Select(p => p.Value.ConvertToHtml());
-                sb.Append($"<p><i>{linkTemplate.TemplateName}: {string.Join(", ", links)}</i></p>");
+                sb.Append("<div class=\"main-article-links\">");
+                foreach (var linkTemplate in MainArticleLinks)
+                {
+                    var links = linkTemplate.Parameters.Select(p => p.Value.ConvertToHtml());
+                    sb.Append($"<p><i>{linkTemplate.TemplateName}: {string.Join(", ", links)}</i></p>");
+                }
+                sb.Append("</div>");
             }
-            sb.Append("</div>");
-        }
 
-        foreach (var element in ContentElements)
-        {
-            sb.Append(element.ConvertToHtml());
-        }
-        foreach (var subsection in Subsections)
-        {
-            sb.Append(subsection.ConvertToHtml());
-        }
-        return sb.ToString();
-    }
-
-    public string ConvertToText()
-    {
-        var sb = new StringBuilder();
-        sb.Append(Heading.ConvertToText());
-
-        if (MainArticleLinks.Any())
-        {
-            foreach (var linkTemplate in MainArticleLinks)
+            foreach (var element in ContentElements)
             {
-                var links = linkTemplate.Parameters.Select(p => p.Value.ConvertToText());
-                sb.Append($"{linkTemplate.TemplateName}: {string.Join(", ", links)}\n\n");
+                sb.Append(element.ConvertToHtml());
             }
+            foreach (var subsection in Subsections)
+            {
+                sb.Append(subsection.ConvertToHtml());
+            }
+            return sb.ToString();
         }
 
-        foreach (var element in ContentElements)
+        public string ConvertToText()
         {
-            sb.Append(element.ConvertToText());
+            var sb = new StringBuilder();
+            sb.Append(Heading.ConvertToText());
+
+            if (MainArticleLinks.Any())
+            {
+                foreach (var linkTemplate in MainArticleLinks)
+                {
+                    var links = linkTemplate.Parameters.Select(p => p.Value.ConvertToText());
+                    sb.Append($"{linkTemplate.TemplateName}: {string.Join(", ", links)}\n\n");
+                }
+            }
+
+            foreach (var element in ContentElements)
+            {
+                sb.Append(element.ConvertToText());
+            }
+            foreach (var subsection in Subsections)
+            {
+                sb.Append(subsection.ConvertToText());
+            }
+            return sb.ToString();
         }
-        foreach (var subsection in Subsections)
-        {
-            sb.Append(subsection.ConvertToText());
-        }
-        return sb.ToString();
     }
 }

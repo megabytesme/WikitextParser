@@ -1,22 +1,23 @@
-﻿namespace WikitextParser.Elements;
-
-/// <summary>
-/// Category link element, in format [[Category:Name]] or [[Category:Name|SortKey]]
-/// </summary>
-public class CategoryElement : WikitextElement
+﻿namespace WikitextParser.Elements
 {
-    public string CategoryName { get; }
-    public string? SortKey { get; }
-
-    public CategoryElement(string sourceText, string categoryName, string? sortKey) : base(WikitextElementType.Category, sourceText)
+    /// <summary>
+    /// Category link element, in format [[Category:Name]] or [[Category:Name|SortKey]]
+    /// </summary>
+    public class CategoryElement : WikitextElement
     {
-        CategoryName = categoryName;
-        SortKey = sortKey;
+        public string CategoryName { get; }
+        public string SortKey { get; }
+
+        public CategoryElement(string sourceText, string categoryName, string sortKey) : base(WikitextElementType.Category, sourceText)
+        {
+            CategoryName = categoryName;
+            SortKey = sortKey;
+        }
+
+        public override string ConvertToHtml() => ""; // Categories are not rendered inline
+
+        public override string ConvertToText() => ""; // Categories are not rendered inline
+
+        protected internal override string ToDebugString() => $"Category: {CategoryName}" + (SortKey != null ? $" | {SortKey}" : "");
     }
-    
-    public override string ConvertToHtml() => ""; // Categories are not rendered inline
-
-    public override string ConvertToText() => ""; // Categories are not rendered inline
-
-    protected internal override string ToDebugString() => $"Category: {CategoryName}" + (SortKey != null ? $" | {SortKey}" : "");
 }

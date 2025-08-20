@@ -1,23 +1,25 @@
-﻿using System.Web;
+﻿using System.Net;
 
-namespace WikitextParser.Elements;
-
-/// <summary>
-/// Link element, in format [[Url]] or [[DisplayText|Url]]
-/// </summary>
-public class LinkElement : WikitextElement
+namespace WikitextParser.Elements
 {
-    public string DisplayText { get; }
-    public string Url { get; }
-
-    public LinkElement(string sourceText, string displayText, string url) : base(WikitextElementType.Link, sourceText)
+    /// <summary>
+    /// Link element, in format [[Url]] or [[DisplayText|Url]]
+    /// </summary>
+    public class LinkElement : WikitextElement
     {
-        DisplayText = displayText;
-        Url = url;
+        public string DisplayText { get; }
+        public string Url { get; }
+
+        public LinkElement(string sourceText, string displayText, string url) : base(WikitextElementType.Link, sourceText)
+        {
+            DisplayText = displayText;
+            Url = url;
+        }
+
+        public override string ConvertToHtml() => $"<a href=\"/wiki/{WebUtility.UrlEncode(Url.Replace(" ", "_"))}\">{WebUtility.HtmlEncode(DisplayText)}</a>";
+
+        public override string ConvertToText() => DisplayText;
+
+        protected internal override string ToDebugString() => $"Link: {DisplayText}";
     }
-    public override string ConvertToHtml() => $"<a href=\"/wiki/{HttpUtility.UrlEncode(Url.Replace(" ", "_"))}\">{HttpUtility.HtmlEncode(DisplayText)}</a>";
-
-    public override string ConvertToText() => DisplayText;
-
-    protected internal override string ToDebugString() => $"Link: {DisplayText}";
 }

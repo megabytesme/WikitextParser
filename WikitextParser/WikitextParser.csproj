@@ -1,33 +1,43 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<Version>0.0.1</Version>
-		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<Authors>stanac</Authors>
-		<Description>A lightweight, dependency-free .NET library for parsing Wikipedia's wikitext markup into a structured object model with both low-level and high-level APIs.</Description>
+  <PropertyGroup>
+    <TargetFrameworks>netstandard1.4;</TargetFrameworks>
 
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <LangVersion>7.3</LangVersion>
 
-		<RepositoryUrl>https://github.com/stanac/WikitextParser</RepositoryUrl>
-		<RepositoryType>git</RepositoryType>
-		<PackageTags>wiki;wikipedia;parser;wikitext;wikicode;markup;</PackageTags>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-	</PropertyGroup>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
 
-	<ItemGroup>
-		<InternalsVisibleTo Include="WikitextParser.Tests" />
-	</ItemGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>0.0.1</Version>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Authors>megabytesme, stanac</Authors>
+    <Description>A lightweight, dependency-free .NET library for parsing Wikipedia's wikitext markup into a structured object model with both low-level and high-level APIs. Forked to support older .NET frameworks like .NET Standard 1.4 for UWP 15063+ (1703).</Description>
 
-	<ItemGroup>
-	  <None Include="..\README.md">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
-	</ItemGroup>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <RepositoryUrl>https://github.com/megabytesme/WikitextParser</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>wiki;wikipedia;parser;wikitext;wikicode;markup;netstandard;uwp;15063</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.4'">
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="WikitextParser.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>
