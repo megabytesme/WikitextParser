@@ -1,4 +1,4 @@
-name: Build and Test
+name: Build, Test, and Pack
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - '**'
 
 jobs:
-  build_and_publish:
+  build_and_test:
     runs-on: ubuntu-latest
     
     steps:
@@ -33,10 +33,9 @@ jobs:
     - name: Pack NuGet Package
       run: dotnet pack WikitextParser/WikitextParser.csproj --configuration Release --output ${{ github.workspace }}/nuget_packages --no-build
 
-    - name: Upload Artifact
-      if: steps.pack.outcome == 'success'
+    - name: Upload Package Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WikitextParser-Package
+        name: WikitextParser-Package-${{ github.ref_name }}-${{ github.sha }}
         path: ${{ github.workspace }}/nuget_packages/*.nupkg
         if-no-files-found: error
