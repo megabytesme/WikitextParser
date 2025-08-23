@@ -187,3 +187,8 @@ To build the project yourself:
 ## License
 
 This project is licensed under the MIT License.
+
+## History
+
+- 0.1.0 - Initial release
+- 0.1.1 - Fix "plainlist" template not parsing correctly

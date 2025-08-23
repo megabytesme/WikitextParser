@@ -1,7 +1,9 @@
-﻿using AwesomeAssertions;
+﻿using System.Collections.Immutable;
+using AwesomeAssertions;
 using AwesomeAssertions.Execution;
 using AwesomeAssertions.Formatting;
 using WikitextParser.Elements;
+using Xunit.Sdk;
 
 namespace WikitextParser.Tests;
 
@@ -74,6 +76,15 @@ public class ParsingPageTests
         creatorParam!.Value.Should().BeOfType<LinkElement>()
             .Which.Url.Should().Be("The Weaver Siblings");
 
+        WikitextElement? staring = page.Infobox.Parameters.SingleOrDefault(x => x.Key == "starring")?.Value;
+        staring.Should().BeOfType<TemplateElement>();
+        staring.As<TemplateElement>().IsPlainlist.Should().BeTrue();
+        IEnumerable<WikitextElement> listItems = (staring as TemplateElement)!.GetPlainListElements().ToImmutableList();
+
+        listItems.Should().HaveCount(6);
+        listItems.Count(x => x.Type == WikitextElementType.Text).Should().Be(1);
+        listItems.Count(x => x.Type == WikitextElementType.Link).Should().Be(5);
+        
         // 2. Check Lead Content
         // **CORRECTED ASSERTION**: Expect 6 elements (3 metadata templates + 3 paragraphs)
         page.LeadContent.Should().HaveCount(6);

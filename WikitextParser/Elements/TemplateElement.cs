@@ -21,7 +21,7 @@ public class TemplateElement : WikitextElement
     public IEnumerable<TemplateParameterElement> Parameters =>
         _parameters ??= TemplateParser.ParseTemplateParameters(this).ToImmutableList();
 
-    public bool IsPlainlist => TemplateName.StartsWith("Plainlist|");
+    public bool IsPlainlist => TemplateName == "Plainlist";
 
     public bool IsTransclusion => TemplateName.StartsWith(":");
 
