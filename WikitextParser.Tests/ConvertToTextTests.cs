@@ -81,7 +81,7 @@ public class ConvertToTextTests
     {
         // Arrange
         var wikitext = "{{Plainlist|\n* item 1\n* [[item 2]]\n}}";
-        var template = new TemplateElement(wikitext) { TemplateName = "Plainlist|" };
+        var template = new TemplateElement(wikitext) { TemplateName = "Plainlist" };
 
         // Act
         var text = template.ConvertToText();
