@@ -22,7 +22,7 @@ namespace WikitextParser.Elements
         public override string ConvertToHtml()
         {
             var sb = new StringBuilder();
-            var attributesPart = string.IsNullOrEmpty(Attributes) ? "" : " " + Attributes;
+            var attributesPart = HtmlAttributes.Render(Attributes);
             sb.Append($"<tr{attributesPart}>");
             foreach (var cell in Cells)
             {

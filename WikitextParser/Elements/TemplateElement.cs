@@ -32,11 +32,11 @@ namespace WikitextParser.Elements
             }
         }
 
-        public bool IsPlainlist => TemplateName.StartsWith("Plainlist|");
+        public bool IsPlainlist => string.Equals(TemplateName, "Plainlist", System.StringComparison.OrdinalIgnoreCase);
 
-        public bool IsTransclusion => TemplateName.StartsWith(":");
+        public bool IsTransclusion => TemplateName != null && TemplateName.StartsWith(":");
 
-        public bool IsInfobox => TemplateName.StartsWith("Infobox");
+        public bool IsInfobox => TemplateName != null && TemplateName.StartsWith("Infobox", System.StringComparison.OrdinalIgnoreCase);
 
         public bool IsInfoboxOfType(string type) => IsInfobox && InfoboxType == type;
 

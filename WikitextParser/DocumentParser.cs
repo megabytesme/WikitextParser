@@ -39,7 +39,7 @@ namespace WikitextParser
                 if (lineStart && ListParser.IsMarker(text[index])) { yield return ListParser.Parse(text, ref index); continue; }
                 if (lineStart && Rule.IsMatch(line)) { yield return new HorizontalRuleElement(line); index = lineEnd; continue; }
                 TableElement table;
-                if (lineStart && BlockParser.TryParseTable(text, ref index, out table)) { yield return table; continue; }
+                if (lineStart && TableParser.TryParse(text, ref index, out table, depth)) { yield return table; continue; }
                 HeadingElement heading;
                 if (lineStart && BlockParser.TryParseHeading(text, ref index, out heading)) { yield return heading; continue; }
                 if (text[index] == '<')
@@ -66,9 +66,9 @@ namespace WikitextParser
                 {
                     var parts = ParserUtils.SplitAtTopLevel(template.SourceText.Substring(2, template.SourceText.Length - 4), '|').ToList();
                     string name = parts[0].Trim();
-                    if (parts.Count == 2 && !template.SourceText.Contains("\n") && !name.StartsWith("Infobox", StringComparison.OrdinalIgnoreCase) &&
-                        !name.Equals("Main", StringComparison.OrdinalIgnoreCase) && !name.Equals("See also", StringComparison.OrdinalIgnoreCase) &&
-                        !name.Equals("Plainlist", StringComparison.OrdinalIgnoreCase))
+                    if (parts.Count == 2 && !template.SourceText.Contains("\n") &&
+                        (name.Equals("Short description", StringComparison.OrdinalIgnoreCase) || name.Equals("About", StringComparison.OrdinalIgnoreCase) ||
+                         name.StartsWith("Use ", StringComparison.OrdinalIgnoreCase) || name.Equals("TOC limit", StringComparison.OrdinalIgnoreCase)))
                         yield return new WikiKeyValuePairElement(template.SourceText, name, InlineParser.Content(parts[1].Trim()));
                     else yield return template;
                     index = next; continue;

@@ -81,6 +81,18 @@ namespace WikitextParser
                 if (length == 5) element = new ItalicElement(source, element);
                 return true;
             }
+            if (ParserUtils.StartsAt(text, i, "{{{"))
+            {
+                int close = ParserUtils.FindMatchingDelimiters(text, i, "{{{", "}}}");
+                if (close > i)
+                {
+                    var parts = ParserUtils.SplitAtTopLevel(text.Substring(i + 3, close - i - 6), '|').ToList();
+                    end = close;
+                    element = new TemplateArgumentElement(text.Substring(i, end - i), parts[0].Trim(),
+                        parts.Count > 1 ? Content(string.Join("|", parts.Skip(1)), depth + 1) : null);
+                    return true;
+                }
+            }
             int temp = i;
             if (BlockParser.TryParseFile(text, ref temp, out element, out end)) return true;
             temp = i;

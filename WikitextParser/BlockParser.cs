@@ -1,4 +1,4 @@
-﻿using WikitextParser.Elements;
+using WikitextParser.Elements;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -46,109 +46,6 @@ namespace WikitextParser
             return true;
         }
 
-        internal static bool TryParseTable(string sourceText, ref int i, out TableElement table)
-        {
-            table = null;
-            if (!sourceText.Substring(i).StartsWith("{|")) return false;
-
-            int start = i;
-            int end = ParserUtils.FindMatchingDelimiters(sourceText, start, "{|", "|}");
-            if (end == -1) return false;
-
-            string tableSrc = sourceText.Substring(start, end - start);
-            string innerContent = tableSrc.Substring(2, tableSrc.Length - 4).Trim();
-
-            var lines = innerContent.Split(new[] { '\n' });
-            string tableAttributes = lines[0].StartsWith("|-") ? "" : lines[0];
-
-            var rowSources = new List<string>();
-            var currentRow = new System.Text.StringBuilder();
-
-            var contentLines = lines.Skip(string.IsNullOrEmpty(tableAttributes) ? 0 : 1);
-
-            foreach (var line in contentLines)
-            {
-                if (line.StartsWith("|-"))
-                {
-                    if (currentRow.Length > 0) rowSources.Add(currentRow.ToString());
-                    currentRow.Clear();
-                    currentRow.Append(line.Substring(2).Trim());
-                    currentRow.Append('\n');
-                }
-                else
-                {
-                    currentRow.AppendLine(line);
-                }
-            }
-            if (currentRow.Length > 0) rowSources.Add(currentRow.ToString());
-
-            var rows = rowSources.Select(ParseTableRow).ToList();
-
-            table = new TableElement(tableSrc, tableAttributes, rows);
-            i = end;
-            return true;
-        }
-
-        private static TableRowElement ParseTableRow(string rowSource)
-        {
-            var lines = rowSource.Trim().Split(new[] { '\n' });
-            string rowAttributes = lines[0].Trim();
-
-            if (rowAttributes.StartsWith("|") || rowAttributes.StartsWith("!"))
-            {
-                rowAttributes = "";
-            }
-
-            var cellLines = string.IsNullOrEmpty(rowAttributes) ? lines : lines.Skip(1);
-            var cells = new List<TableCellElement>();
-
-            foreach (var line in cellLines)
-            {
-                var trimmedLine = line.Trim();
-                if (string.IsNullOrEmpty(trimmedLine)) continue;
-
-                bool isHeader = trimmedLine.StartsWith("!");
-                if (isHeader || trimmedLine.StartsWith("|"))
-                {
-                    var cellSeparator = isHeader ? "!!" : "||";
-                    var cellParts = trimmedLine.Substring(1).Split(new[] { cellSeparator }, System.StringSplitOptions.None);
-                    foreach (var cellSource in cellParts)
-                    {
-                        cells.Add(ParseTableCell(cellSource, isHeader));
-                    }
-                }
-            }
-
-            return new TableRowElement(rowSource, rowAttributes, cells);
-        }
-
-        private static TableCellElement ParseTableCell(string cellSource, bool isHeader)
-        {
-            string attributes = "";
-            string contentSource = cellSource;
-
-            int pipeSeparator = cellSource.IndexOf('|');
-            if (pipeSeparator != -1)
-            {
-                string potentialAttrs = cellSource.Substring(0, pipeSeparator);
-                int temp;
-                if (potentialAttrs.Contains("=") || potentialAttrs.Contains(";") || int.TryParse(potentialAttrs.Trim(), out temp))
-                {
-                    attributes = potentialAttrs.Trim();
-                    contentSource = cellSource.Substring(pipeSeparator + 1);
-                }
-            }
-
-            contentSource = contentSource.Trim();
-            var contentElements = InlineParser.ParseInline(contentSource).Select(e => e).ToList();
-
-            WikitextElement content = contentElements.Count == 1
-                ? contentElements[0]
-                : new ParagraphElement(contentSource, contentElements);
-
-            return new TableCellElement(cellSource, attributes, content, isHeader);
-        }
-
         internal static bool TryParseCategoryLink(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
         {
             element = null;
@@ -189,15 +86,14 @@ namespace WikitextParser
         {
             element = null;
             nextIndex = i;
-            if (i + 1 < sourceText.Length && sourceText.Substring(i, 2) == "{{")
+            if (ParserUtils.StartsAt(sourceText, i, "{{") && !ParserUtils.StartsAt(sourceText, i, "{{{"))
             {
                 int end = ParserUtils.FindMatchingDelimiters(sourceText, i, "{{", "}}");
                 if (end != -1)
                 {
                     string templateSource = sourceText.Substring(i, end - i);
                     string innerText = templateSource.Substring(2, templateSource.Length - 4);
-                    int pipeIndex = innerText.IndexOfAny(new char[] { '|', '\n' });
-                    string templateName = (pipeIndex != -1) ? innerText.Substring(0, pipeIndex).Trim() : innerText.Trim();
+                    string templateName = ParserUtils.SplitAtTopLevel(innerText, '|').First().Trim();
                     element = new TemplateElement(templateSource) { TemplateName = templateName };
                     nextIndex = end;
                     return true;
@@ -221,14 +117,14 @@ namespace WikitextParser
             else
                 return false;
 
-            int end = sourceText.IndexOf("]]", i + 2, System.StringComparison.Ordinal);
+            int end = ParserUtils.FindMatchingDelimiters(sourceText, i, "[[", "]]");
             if (end == -1) return false;
 
-            nextIndex = end + 2;
+            nextIndex = end;
             string fullSource = sourceText.Substring(i, nextIndex - i);
             string innerContent = fullSource.Substring(2 + prefix.Length, fullSource.Length - (4 + prefix.Length));
 
-            var parts = innerContent.Split('|');
+            var parts = ParserUtils.SplitAtTopLevel(innerContent, '|').ToArray();
             var fileName = parts[0].Trim();
             var options = new List<string>();
             string caption = null;
@@ -239,13 +135,13 @@ namespace WikitextParser
             for (int p = 1; p < parts.Length; p++)
             {
                 var part = parts[p].Trim();
-                var partLower = part.ToLower();
+                var partLower = part.ToLowerInvariant();
 
                 if (partLower.EndsWith("px") && int.TryParse(partLower.Replace("px", "").TrimStart('x'), out temp))
                     options.Add(part);
                 else if (knownOptions.Contains(partLower))
                     options.Add(part);
-                else if (partLower.StartsWith("alt="))
+                else if (partLower.StartsWith("alt=") || partLower.StartsWith("link=") || partLower.StartsWith("upright") || partLower.StartsWith("page=") || partLower.StartsWith("class=") || System.Text.RegularExpressions.Regex.IsMatch(partLower, @"^(\d+)?x?\d+px$"))
                     options.Add(part);
                 else
                     caption = part;

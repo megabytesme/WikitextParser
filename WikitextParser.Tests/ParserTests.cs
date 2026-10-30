@@ -256,7 +256,7 @@ public class ParserTests
         row2.Cells[0].IsHeader.Should().BeFalse();
         row2.Cells[0].Attributes.Should().Be("rowspan=\"2\"");
         row2.Cells[0].Content.As<TextElement>().SourceText.Should().Be("Cell A1/B1");
-        row2.Cells[1].Content.As<ParagraphElement>().ChildElements.OfType<LinkElement>().Single().Url.Should().Be("a link");
+        row2.Cells[1].Content.As<InlineContainerElement>().ChildElements.OfType<LinkElement>().Single().Url.Should().Be("a link");
 
         // Row 3
         var row3 = table.Rows[2];

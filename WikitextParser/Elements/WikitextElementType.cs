@@ -30,6 +30,7 @@
         List,
         ListItem,
         Preformatted,
-        HorizontalRule
+        HorizontalRule,
+        TemplateArgument
     }
 }

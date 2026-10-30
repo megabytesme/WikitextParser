@@ -19,7 +19,7 @@
         public override string ConvertToHtml()
         {
             var tag = IsHeader ? "th" : "td";
-            var attributesPart = string.IsNullOrEmpty(Attributes) ? "" : " " + Attributes;
+            var attributesPart = HtmlAttributes.Render(Attributes);
             return $"<{tag}{attributesPart}>{Content.ConvertToHtml()}</{tag}>";
         }
 

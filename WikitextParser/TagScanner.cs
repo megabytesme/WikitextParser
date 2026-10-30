@@ -53,7 +53,7 @@ namespace WikitextParser
             }
             TagToken tag;
             if (text[index] == '<' && TryRead(text, index, out tag) &&
-                (tag.Name == "nowiki" || tag.Name == "pre" || tag.Name == "source" || tag.Name == "syntaxhighlight" || tag.Name == "math"))
+                (tag.Name == "nowiki" || tag.Name == "pre" || tag.Name == "source" || tag.Name == "syntaxhighlight" || tag.Name == "math" || tag.Name == "ref" || tag.Name == "gallery"))
             { end = tag.End; return true; }
             return false;
         }

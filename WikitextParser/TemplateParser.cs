@@ -1,119 +1,37 @@
-﻿using WikitextParser.Elements;
 using System.Collections.Generic;
 using System.Linq;
+using WikitextParser.Elements;
 
 namespace WikitextParser
 {
-    /// <summary>
-    /// Handles parsing the contents of a TemplateElement.
-    /// </summary>
     internal static class TemplateParser
     {
-
         internal static IEnumerable<WikitextElement> ParsePlainList(TemplateElement template)
         {
-            string innerText = template.SourceText.Substring(2, template.SourceText.Length - 4);
-
-            int nameEndIndex = innerText.IndexOf('|');
-            if (nameEndIndex == -1) yield break;
-            string listText = innerText.Substring(nameEndIndex + 1);
-
-            string[] items = listText.Split(new char[] { '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (string item in items)
+            string inner = template.SourceText.Substring(2, template.SourceText.Length - 4);
+            var parts = ParserUtils.SplitAtTopLevel(inner, '|').ToList();
+            if (parts.Count < 2) yield break;
+            foreach (string line in parts[1].Split('\n'))
             {
-                string trimmedItem = item.Trim();
-                if (trimmedItem.StartsWith("*"))
-                {
-                    string itemContent = trimmedItem.Substring(1).Trim();
-                    foreach (WikitextElement element in InlineParser.ParseInline(itemContent))
-                    {
-                        yield return element;
-                    }
-                }
+                string item = line.Trim();
+                if (item.StartsWith("*")) yield return InlineParser.Content(item.Substring(1).Trim());
             }
         }
 
         internal static IEnumerable<TemplateParameterElement> ParseTemplateParameters(TemplateElement template)
         {
-            string innerText = template.SourceText.Substring(2, template.SourceText.Length - 4);
-
-            int firstPipe = innerText.IndexOf('|');
-            if (firstPipe == -1) yield break; // No parameters
-
-            string paramsText = innerText.Substring(firstPipe + 1);
-
-            var parameterStrings = SplitAtTopLevel(paramsText, '|');
-
-            foreach (string paramStr in parameterStrings)
+            string inner = template.SourceText.Substring(2, template.SourceText.Length - 4);
+            foreach (string parameter in ParserUtils.SplitAtTopLevel(inner, '|').Skip(1))
             {
-                string trimmedParam = paramStr.Trim();
-                if (string.IsNullOrEmpty(trimmedParam)) continue;
-
-                string key = null;
-                string valueSource;
-
-                int equalsIndex = trimmedParam.IndexOf('=');
-                if (equalsIndex > 0)
-                {
-                    key = trimmedParam.Substring(0, equalsIndex).Trim();
-                    valueSource = trimmedParam.Substring(equalsIndex + 1).Trim();
-                }
-                else
-                {
-                    valueSource = trimmedParam;
-                }
-
-                var parsedValueElements = InlineParser.ParseInline(valueSource).ToList();
-                WikitextElement valueElement;
-
-                if (parsedValueElements.Count == 1)
-                {
-                    valueElement = parsedValueElements.First();
-                }
-                else if (parsedValueElements.Any())
-                {
-                    valueElement = new ParagraphElement(valueSource, parsedValueElements.Select(e => e));
-                }
-                else
-                {
-                    valueElement = new TextElement(valueSource);
-                }
-
-                yield return new TemplateParameterElement(trimmedParam, key, valueElement);
+                int equals = ParserUtils.TopLevelSeparators(parameter, "=").DefaultIfEmpty(-1).First();
+                string key = equals < 0 ? null : parameter.Substring(0, equals).Trim();
+                // Whitespace is significant in unnamed parameters. Empty slots still consume a position.
+                string value = equals < 0 ? parameter : parameter.Substring(equals + 1).Trim();
+                var children = InlineParser.ParseInline(value).ToList();
+                WikitextElement content = children.Count == 1 ? children[0] : children.Count == 0 ?
+                    (WikitextElement)new TextElement(value) : new ParagraphElement(value, children);
+                yield return new TemplateParameterElement(parameter, key, content);
             }
-        }
-
-        private static IEnumerable<string> SplitAtTopLevel(string text, char separator)
-        {
-            int level = 0;
-            int lastSplit = 0;
-            for (int i = 0; i < text.Length; i++)
-            {
-                if (i + 1 < text.Length)
-                {
-                    var sub = text.Substring(i, 2);
-                    if (sub == "{{" || sub == "[[")
-                    {
-                        level++;
-                        i++;
-                        continue;
-                    }
-                    if (sub == "}}" || sub == "]]")
-                    {
-                        level--;
-                        i++;
-                        continue;
-                    }
-                }
-
-                if (text[i] == separator && level == 0)
-                {
-                    yield return text.Substring(lastSplit, i - lastSplit);
-                    lastSplit = i + 1;
-                }
-            }
-            yield return text.Substring(lastSplit);
         }
     }
 }
