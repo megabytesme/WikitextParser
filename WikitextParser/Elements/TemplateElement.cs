@@ -14,8 +14,12 @@ namespace WikitextParser.Elements
         private IEnumerable<WikitextElement> _plainListElements;
         private IEnumerable<TemplateParameterElement> _parameters;
 
-        public TemplateElement(string sourceText) : base(WikitextElementType.Template, sourceText)
+        private readonly ParseContext _context;
+        private readonly int _depth;
+        public TemplateElement(string sourceText) : this(sourceText, ParseContext.Default, 0) { }
+        internal TemplateElement(string sourceText, ParseContext context, int depth) : base(WikitextElementType.Template, sourceText)
         {
+            _context = context; _depth = depth;
         }
 
         public string TemplateName { get; set; }
@@ -26,7 +30,7 @@ namespace WikitextParser.Elements
             {
                 if (_parameters == null)
                 {
-                    _parameters = TemplateParser.ParseTemplateParameters(this).ToImmutableList();
+                    _parameters = TemplateParser.ParseTemplateParameters(this, _context, _depth + 1).ToImmutableList();
                 }
                 return _parameters;
             }
@@ -61,7 +65,7 @@ namespace WikitextParser.Elements
 
             if (_plainListElements == null)
             {
-                _plainListElements = TemplateParser.ParsePlainList(this).Select(e => e).ToImmutableList();
+                _plainListElements = TemplateParser.ParsePlainList(this, _context, _depth + 1).Select(e => e).ToImmutableList();
             }
             return _plainListElements;
         }

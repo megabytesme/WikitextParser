@@ -11,7 +11,7 @@ namespace WikitextParser
         internal static bool IsMarker(char c) => c == '*' || c == '#' || c == ';' || c == ':';
         private static char Kind(char c) => c == ';' ? ':' : c;
 
-        internal static WikitextElement Parse(string text, ref int index)
+        internal static WikitextElement Parse(string text, ref int index, ParseContext context = null)
         {
             int start = index;
             var lines = new List<Line>();
@@ -34,12 +34,12 @@ namespace WikitextParser
                 index = end < text.Length ? end + 1 : end;
             }
             int position = 0;
-            var lists = ParseLevel(lines, ref position, 0, "");
+            var lists = ParseLevel(lines, ref position, 0, "", context);
             string fullSource = text.Substring(start, index - start).TrimEnd('\n');
             return lists.Count == 1 ? (WikitextElement)lists[0] : new BlockContainerElement(fullSource, lists);
         }
 
-        private static List<ListElement> ParseLevel(List<Line> lines, ref int position, int depth, string parentPrefix)
+        private static List<ListElement> ParseLevel(List<Line> lines, ref int position, int depth, string parentPrefix, ParseContext context)
         {
             var result = new List<ListElement>();
             while (position < lines.Count && lines[position].Prefix.Length > depth && lines[position].Prefix.StartsWith(parentPrefix, StringComparison.Ordinal))
@@ -54,9 +54,9 @@ namespace WikitextParser
                     string prefix = line.Prefix.Substring(0, depth + 1);
                     bool explicitItem = line.Prefix.Length == depth + 1;
                     if (explicitItem) position++;
-                    var nested = ParseLevel(lines, ref position, depth + 1, prefix);
+                    var nested = ParseLevel(lines, ref position, depth + 1, prefix, context);
                     items.Add(new ListItemElement(explicitItem ? line.Source : "", prefix,
-                        InlineParser.Content(explicitItem ? line.Content : ""), nested));
+                        InlineParser.Content(explicitItem ? line.Content : "", depth, context), nested));
                 }
                 result.Add(new ListElement(string.Join("\n", lines.Skip(groupStart).Take(position - groupStart).Select(l => l.Source)), marker, items));
             }

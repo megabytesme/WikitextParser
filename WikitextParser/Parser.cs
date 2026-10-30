@@ -11,15 +11,27 @@ namespace WikitextParser
         private static readonly HashSet<string> MainArticleTemplates = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Main", "See also" };
 
         /// <summary>Parse block and inline syntax without expanding wiki-specific templates.</summary>
-        public static IEnumerable<WikitextElement> Parse(string sourceText) => DocumentParser.Parse(sourceText);
+        public static IEnumerable<WikitextElement> Parse(string sourceText) => Parse(sourceText, null);
+        public static IEnumerable<WikitextElement> Parse(string sourceText, ParserOptions options)
+        {
+            var context = new ParseContext(options);
+            return DocumentParser.Parse(InclusionPreprocessor.Process(sourceText, context.Inclusion), 0, context);
+        }
 
         /// <summary>Parse an ordered syntax tree with known compatibility gaps for host/server fallback.</summary>
-        public static ParsedDocument ParseDocument(string sourceText) => new ParsedDocument(Parse(sourceText));
+        public static ParsedDocument ParseDocument(string sourceText) => ParseDocument(sourceText, null);
+        public static ParsedDocument ParseDocument(string sourceText, ParserOptions options)
+        {
+            var context = new ParseContext(options);
+            string prepared = InclusionPreprocessor.Process(sourceText, context.Inclusion);
+            return new ParsedDocument(DocumentParser.Parse(prepared, 0, context), sourceText, prepared);
+        }
 
         /// <summary>Organize parsed elements into a lead, infobox and sections at any heading level.</summary>
-        public static Page ParsePage(string sourceText)
+        public static Page ParsePage(string sourceText) => ParsePage(sourceText, null);
+        public static Page ParsePage(string sourceText, ParserOptions options)
         {
-            var elements = Parse(sourceText).ToList();
+            var elements = Parse(sourceText, options).ToList();
             var infobox = elements.OfType<TemplateElement>().FirstOrDefault(t => t.IsInfobox);
             if (infobox != null) elements.Remove(infobox);
             int index = elements.FindIndex(e => e is HeadingElement);

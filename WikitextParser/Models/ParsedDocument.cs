@@ -22,12 +22,15 @@ namespace WikitextParser.Models
     public sealed class ParsedDocument
     {
         public IReadOnlyList<WikitextElement> Elements { get; }
+        public string SourceText { get; }
+        public string PreprocessedText { get; }
         public IReadOnlyList<CompatibilityIssue> CompatibilityIssues { get; }
         /// <summary>Known unresolved constructs exist. False is not a guarantee of MediaWiki parity.</summary>
         public bool RequiresWikiContext => CompatibilityIssues.Count > 0;
 
-        internal ParsedDocument(IEnumerable<WikitextElement> elements)
+        internal ParsedDocument(IEnumerable<WikitextElement> elements, string sourceText, string preprocessedText)
         {
+            SourceText = sourceText; PreprocessedText = preprocessedText;
             Elements = elements.ToImmutableList();
             var issues = new List<CompatibilityIssue>();
             foreach (var node in ElementTraversal.DescendantsAndSelf(Elements))

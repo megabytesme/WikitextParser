@@ -9,7 +9,7 @@ namespace WikitextParser
     /// </summary>
     internal static class BlockParser
     {
-        internal static bool TryParseHeading(string text, ref int currentIndex, out HeadingElement heading)
+        internal static bool TryParseHeading(string text, ref int currentIndex, out HeadingElement heading, ParseContext context = null)
         {
             heading = null;
             int i = currentIndex;
@@ -39,26 +39,27 @@ namespace WikitextParser
             if (string.IsNullOrEmpty(innerText)) return false;
 
             string sourceText = text.Substring(currentIndex, endOfLine - currentIndex);
-            var childElement = InlineParser.Content(innerText);
+            var childElement = InlineParser.Content(innerText, 0, context);
 
             heading = new HeadingElement(sourceText, level, childElement);
             currentIndex = endOfLine;
             return true;
         }
 
-        internal static bool TryParseCategoryLink(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
+        internal static bool TryParseCategoryLink(string sourceText, ref int i, out WikitextElement element, out int nextIndex, ParseContext context = null)
         {
             element = null;
             nextIndex = i;
 
-            const string prefix = "[[Category:";
-            if (sourceText.Substring(i).StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
+            context = context ?? ParseContext.Default;
+            int prefixLength = context.NamespaceLength(sourceText, i, context.CategoryNamespaces) + 2;
+            if (prefixLength > 2)
             {
-                int end = sourceText.IndexOf("]]", i + prefix.Length, System.StringComparison.Ordinal);
+                int end = ParserUtils.FindMatchingDelimiters(sourceText, i, "[[", "]]");
                 if (end != -1)
                 {
-                    string fullSource = sourceText.Substring(i, end - i + 2);
-                    string content = fullSource.Substring(prefix.Length, fullSource.Length - prefix.Length - 2);
+                    string fullSource = sourceText.Substring(i, end - i);
+                    string content = fullSource.Substring(prefixLength, fullSource.Length - prefixLength - 2);
 
                     string categoryName;
                     string sortKey = null;
@@ -75,14 +76,14 @@ namespace WikitextParser
                     }
 
                     element = new CategoryElement(fullSource, categoryName, sortKey);
-                    nextIndex = end + 2;
+                    nextIndex = end;
                     return true;
                 }
             }
             return false;
         }
 
-        internal static bool TryParseTemplate(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
+        internal static bool TryParseTemplate(string sourceText, ref int i, out WikitextElement element, out int nextIndex, ParseContext context = null, int depth = 0)
         {
             element = null;
             nextIndex = i;
@@ -94,7 +95,7 @@ namespace WikitextParser
                     string templateSource = sourceText.Substring(i, end - i);
                     string innerText = templateSource.Substring(2, templateSource.Length - 4);
                     string templateName = ParserUtils.SplitAtTopLevel(innerText, '|').First().Trim();
-                    element = new TemplateElement(templateSource) { TemplateName = templateName };
+                    element = new TemplateElement(templateSource, context ?? ParseContext.Default, depth) { TemplateName = templateName };
                     nextIndex = end;
                     return true;
                 }
@@ -102,27 +103,23 @@ namespace WikitextParser
             return false;
         }
 
-        internal static bool TryParseFile(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
+        internal static bool TryParseFile(string sourceText, ref int i, out WikitextElement element, out int nextIndex, ParseContext context = null)
         {
             element = null;
             nextIndex = i;
 
             if (sourceText.Length <= i + 1 || sourceText.Substring(i, 2) != "[[") return false;
 
-            string prefix;
-            if (sourceText.Substring(i + 2).StartsWith("File:", System.StringComparison.OrdinalIgnoreCase))
-                prefix = "File:";
-            else if (sourceText.Substring(i + 2).StartsWith("Image:", System.StringComparison.OrdinalIgnoreCase))
-                prefix = "Image:";
-            else
-                return false;
+            context = context ?? ParseContext.Default;
+            int prefixLength = context.NamespaceLength(sourceText, i, context.FileNamespaces);
+            if (prefixLength == 0) return false;
 
             int end = ParserUtils.FindMatchingDelimiters(sourceText, i, "[[", "]]");
             if (end == -1) return false;
 
             nextIndex = end;
             string fullSource = sourceText.Substring(i, nextIndex - i);
-            string innerContent = fullSource.Substring(2 + prefix.Length, fullSource.Length - (4 + prefix.Length));
+            string innerContent = fullSource.Substring(2 + prefixLength, fullSource.Length - (4 + prefixLength));
 
             var parts = ParserUtils.SplitAtTopLevel(innerContent, '|').ToArray();
             var fileName = parts[0].Trim();
@@ -135,6 +132,8 @@ namespace WikitextParser
             for (int p = 1; p < parts.Length; p++)
             {
                 var part = parts[p].Trim();
+                string canonical;
+                if (context.ImageOptions.TryGetValue(part, out canonical)) part = canonical;
                 var partLower = part.ToLowerInvariant();
 
                 if (partLower.EndsWith("px") && int.TryParse(partLower.Replace("px", "").TrimStart('x'), out temp))

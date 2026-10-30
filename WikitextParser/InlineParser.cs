@@ -15,8 +15,9 @@ namespace WikitextParser
         private static readonly Regex Protocol = new Regex(@"\G(?:https?://|ftp://|mailto:|//)", RegexOptions.IgnoreCase);
         private static readonly Regex BehaviorSwitch = new Regex(@"\G__[A-Z][A-Z0-9_]*?__");
 
-        internal static IEnumerable<WikitextElement> ParseInline(string text, int depth = 0)
+        internal static IEnumerable<WikitextElement> ParseInline(string text, int depth = 0, ParseContext context = null)
         {
+            context = context ?? ParseContext.Default;
             if (string.IsNullOrEmpty(text)) yield break;
             if (depth >= 128) { yield return new TextElement(text); yield break; }
             int last = 0;
@@ -24,7 +25,7 @@ namespace WikitextParser
             {
                 WikitextElement element;
                 int end;
-                if (!TryParse(text, i, depth, out element, out end)) { i++; continue; }
+                if (!TryParse(text, i, depth, out element, out end, context)) { i++; continue; }
                 if (i > last) yield return new TextElement(text.Substring(last, i - last));
                 yield return element;
                 last = i = end;
@@ -32,13 +33,13 @@ namespace WikitextParser
             if (last < text.Length) yield return new TextElement(text.Substring(last));
         }
 
-        internal static WikitextElement Content(string text, int depth = 0)
+        internal static WikitextElement Content(string text, int depth = 0, ParseContext context = null)
         {
-            var children = ParseInline(text, depth).ToList();
+            var children = ParseInline(text, depth, context).ToList();
             return children.Count == 1 ? children[0] : new InlineContainerElement(text, children);
         }
 
-        private static bool TryParse(string text, int i, int depth, out WikitextElement element, out int end)
+        private static bool TryParse(string text, int i, int depth, out WikitextElement element, out int end, ParseContext context)
         {
             element = null;
             end = i;
@@ -56,9 +57,9 @@ namespace WikitextParser
                 {
                     string source = text.Substring(i, tag.End - i), body = text.Substring(tag.ContentStart, tag.ContentEnd - tag.ContentStart);
                     if (tag.Name == "nowiki" || tag.Name == "pre") element = new LiteralElement(source, body, tag.Name == "pre");
-                    else if (tag.Name == "ref") element = new RefElement(source, tag.SelfClosing ? null : Content(body, depth + 1),
+                    else if (tag.Name == "ref") element = new RefElement(source, tag.SelfClosing ? null : Content(body, depth + 1, context),
                         HtmlAttributes.Parse(tag.Attributes).FirstOrDefault(a => a.Key.Equals("name", StringComparison.OrdinalIgnoreCase)).Value);
-                    else if (HtmlTags.Contains(tag.Name)) element = new HtmlElement(source, tag.Name, tag.Attributes, Content(body, depth + 1), tag.SelfClosing);
+                    else if (HtmlTags.Contains(tag.Name)) element = new HtmlElement(source, tag.Name, tag.Attributes, Content(body, depth + 1, context), tag.SelfClosing);
                     else element = new ExtensionTagElement(source, tag.Name, tag.Attributes, body);
                     end = tag.End; return true;
                 }
@@ -81,7 +82,7 @@ namespace WikitextParser
                 int close = text.IndexOf(quotes, i + length, StringComparison.Ordinal), newline = text.IndexOf('\n', i + length);
                 if (close < 0 || (newline >= 0 && newline < close)) continue;
                 string body = text.Substring(i + length, close - i - length);
-                var content = Content(body, depth + 1);
+                var content = Content(body, depth + 1, context);
                 end = close + length;
                 string source = text.Substring(i, end - i);
                 element = length == 2 ? (WikitextElement)new ItalicElement(source, content) : new BoldElement(source, content);
@@ -96,14 +97,14 @@ namespace WikitextParser
                     var parts = ParserUtils.SplitAtTopLevel(text.Substring(i + 3, close - i - 6), '|').ToList();
                     end = close;
                     element = new TemplateArgumentElement(text.Substring(i, end - i), parts[0].Trim(),
-                        parts.Count > 1 ? Content(string.Join("|", parts.Skip(1)), depth + 1) : null);
+                        parts.Count > 1 ? Content(string.Join("|", parts.Skip(1)), depth + 1, context) : null);
                     return true;
                 }
             }
             int temp = i;
-            if (BlockParser.TryParseFile(text, ref temp, out element, out end)) return true;
+            if (BlockParser.TryParseFile(text, ref temp, out element, out end, context)) return true;
             temp = i;
-            if (BlockParser.TryParseCategoryLink(text, ref temp, out element, out end)) return true;
+            if (BlockParser.TryParseCategoryLink(text, ref temp, out element, out end, context)) return true;
             if (ParserUtils.StartsAt(text, i, "[["))
             {
                 int close = ParserUtils.FindMatchingDelimiters(text, i, "[[", "]]");
@@ -113,9 +114,9 @@ namespace WikitextParser
                     string target = parts[0].Trim().TrimStart(':'), label = parts.Count > 1 ? string.Join("|", parts.Skip(1)) : target;
                     if (parts.Count > 1 && label.Length == 0) label = PipeTrick(target);
                     end = close;
-                    while (end < text.Length && text[end] >= 'a' && text[end] <= 'z') end++;
+                    end = context.TrailEnd(text, end);
                     label += text.Substring(close, end - close);
-                    element = new LinkElement(text.Substring(i, end - i), label, target, Content(label, depth + 1));
+                    element = new LinkElement(text.Substring(i, end - i), label, target, Content(label, depth + 1, context));
                     return true;
                 }
             }
@@ -145,12 +146,12 @@ namespace WikitextParser
                     string url = text.Substring(urlStart, urlEnd - urlStart);
                     // URL labels must be plain nodes to avoid parsing bare URLs recursively.
                     element = new ExternalLinkElement(text.Substring(i, end - i), url,
-                        label.Length == 0 ? new TextElement(url) : Content(label, depth + 1), !bracketed);
+                        label.Length == 0 ? new TextElement(url) : Content(label, depth + 1, context), !bracketed);
                     return true;
                 }
             }
             temp = i;
-            return BlockParser.TryParseTemplate(text, ref temp, out element, out end);
+            return BlockParser.TryParseTemplate(text, ref temp, out element, out end, context, depth);
         }
 
         private static string PipeTrick(string target)

@@ -1,5 +1,21 @@
 # WikitextParser
 
+Wiki-specific syntax can be supplied without changing process-global state:
+
+```csharp
+var options = new ParserOptions {
+    FileNamespaces = new[] { "Datei", "Bild" },
+    CategoryNamespaces = new[] { "Kategorie" },
+    RedirectAliases = new[] { "#WEITERLEITUNG" },
+    LinkTrailPattern = "[a-zäöüß]+", // .NET fragment; not MediaWiki's PCRE wrapper
+    InclusionMode = InclusionMode.Page
+};
+var document = Parser.ParseDocument(source, options);
+// SourceText preserves the original; PreprocessedText shows inclusion selection.
+```
+
+Use `InclusionMode.Transclusion` for inclusion controls when inspecting template bodies, or `Preserve` to retain their markup. This selects content; template expansion, substitution, Lua, extension behavior and full MediaWiki grammar remain with the originating wiki.
+
 WikitextParser is a .NET Standard 1.4 library for parsing MediaWiki wikitext into a structured object model, including on UWP 15063+. It provides an ordered syntax tree, a page/section API, and basic HTML and text conversion.
 
 This branch expands core syntax support while retaining C# 7.3 and older UWP compatibility. It is **not a full MediaWiki implementation**: template expansion, Lua, extensions, localized grammar and exact rendering need wiki context.
