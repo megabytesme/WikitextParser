@@ -22,6 +22,12 @@ namespace WikitextParser
                 string line = text.Substring(index, lineEnd - index);
                 if (string.IsNullOrWhiteSpace(line)) { index = lineEnd < text.Length ? lineEnd + 1 : lineEnd; continue; }
                 bool lineStart = index == 0 || text[index - 1] == '\n';
+                if (index == 0 && line.StartsWith("#REDIRECT", StringComparison.OrdinalIgnoreCase) &&
+                    (line.Length == 9 || char.IsWhiteSpace(line[9]) || line[9] == '['))
+                {
+                    var target = InlineParser.ParseInline(line.Substring(9).Trim()).OfType<LinkElement>().FirstOrDefault();
+                    if (target != null) { yield return new RedirectElement(line, target); index = lineEnd; continue; }
+                }
                 if (lineStart && text[index] == ' ')
                 {
                     int start = index;

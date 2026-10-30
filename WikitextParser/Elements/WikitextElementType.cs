@@ -31,6 +31,9 @@
         ListItem,
         Preformatted,
         HorizontalRule,
-        TemplateArgument
+        TemplateArgument,
+        ExtensionTag,
+        BehaviorSwitch,
+        Redirect
     }
 }

@@ -13,6 +13,9 @@ namespace WikitextParser
         /// <summary>Parse block and inline syntax without expanding wiki-specific templates.</summary>
         public static IEnumerable<WikitextElement> Parse(string sourceText) => DocumentParser.Parse(sourceText);
 
+        /// <summary>Parse an ordered syntax tree with known compatibility gaps for host/server fallback.</summary>
+        public static ParsedDocument ParseDocument(string sourceText) => new ParsedDocument(Parse(sourceText));
+
         /// <summary>Organize parsed elements into a lead, infobox and sections at any heading level.</summary>
         public static Page ParsePage(string sourceText)
         {

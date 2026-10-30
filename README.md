@@ -1,8 +1,8 @@
 # WikitextParser
 
-WikitextParser is a dependency-free .NET 9 library for parsing Wikipedia's wikitext markup into a structured object model. It provides both a low-level API for direct element access and a high-level API for parsing a full page into a semantic structure of sections, subsections, and an infobox.
+WikitextParser is a .NET Standard 1.4 library for parsing MediaWiki wikitext into a structured object model, including on UWP 15063+. It provides an ordered syntax tree, a page/section API, and basic HTML and text conversion.
 
-The entire library was developed to parse real-world Wikipedia page and can handle a variety of common wikitext syntax.
+This branch expands core syntax support while retaining C# 7.3 and older UWP compatibility. It is **not a full MediaWiki implementation**: template expansion, Lua, extensions, localized grammar and exact rendering need wiki context.
 
 ## Features
 
@@ -10,7 +10,8 @@ The entire library was developed to parse real-world Wikipedia page and can hand
     - **High-Level API (`Parser.ParsePage`)**: Parses an entire page into a structured `Page` object with a lead section, an infobox, and a nested hierarchy of sections.
     - **Low-Level API (`Parser.Parse`)**: Parses wikitext into a flat `IEnumerable<WikitextElement>` for custom processing and analysis.
 - **Content Conversion**: Convert any parsed element, section, or the entire page into either HTML or plain text.
-- **No Dependencies**: The core library is self-contained and does not require any external packages.
+- **UWP Compatibility**: Targets .NET Standard 1.4, with compatibility package references for older runtimes.
+- **Rendering Preparation**: `Parser.ParseDocument` retains source order and reports known constructs requiring server or host rendering. `ElementTraversal` exposes children without depending on a UI framework.
 
 ## Installation
 
@@ -140,7 +141,7 @@ The parser currently supports the following wikitext syntax:
 | Element | Wikitext Syntax | Notes |
 |---|---|---|
 | **Paragraphs** | `Some text.` | Paragraphs are separated by one or more blank lines (`\n\n`). Single newlines are treated as line breaks within a paragraph. |
-| **Headings** | `== H2 ==`, `=== H3 ===`, etc. | Parses heading levels 2 through 6. |
+| **Headings** | `= H1 =`, `== H2 ==`, etc. | Levels 1 through 6; page hierarchy retains skipped levels. |
 | **Bold** | `'''Bold Text'''` | |
 | **Italic** | `''Italic Text''` | |
 | **Bold & Italic**| `'''''Bold Italic'''''` | |
@@ -148,11 +149,33 @@ The parser currently supports the following wikitext syntax:
 | **Templates** | `{{TemplateName|param1|key=value}}` | Supports named and positional parameters, as well as nested templates. |
 | **Infoboxes** | `{{Infobox ... }}` | Recognized as a special `TemplateElement` and separated in the high-level API. |
 | **Simple KVP** | `{{Short description|...}}` | Simple single-line templates are parsed as `WikiKeyValuePairElement`. |
-| **Tables** | `{| ... |}` | Supports table attributes, rows (`|-`), headers (`!`), cells (`|`), and cell attributes. |
+| **Tables** | `{| ... |}` | Captions, implicit rows, headers, cell attributes, continuation lines and nested tables; protected separators are retained. |
 | **References** | `<ref>...</ref>`, `<ref name="..."/>`, `<ref name="...">...</ref>` | Parses standard, named, and self-closing reference tags. |
 | **File/Image** | `[[File:Name.jpg|thumb|caption]]` | Parses filename, options (like `thumb`, `right`, `220px`), and the final caption. |
 | **Category Links**| `[[Category:Category Name|Sort Key]]` | Parsed as distinct `CategoryElement` objects. |
 | **HTML Comments**| `<!-- A comment -->` | Comments are parsed and preserved. |
+| **Lists and Indentation** | `*`, `#`, `;`, `:` | Nested and mixed lists, definition terms and indentation. |
+| **Preformatted Text** | Space-prefixed lines, `<pre>` | Space-prefixed lines allow inline markup; explicit pre blocks are literal. |
+| **Literal Regions** | `<nowiki>...</nowiki>`, `<nowiki/>` | Protects markup and block boundaries. |
+| **Entities** | `&amp;`, `&#65;`, `&#x41;` | Decoded for text, encoded once for HTML. |
+| **External Links** | `[https://example.org label]`, bare URLs | HTTP(S), FTP, mailto and protocol-relative links; labels can contain markup. |
+| **Formatting Tags** | `<sup>`, `<sub>`, `<small>`, `<span>`, etc. | Structured nodes; default HTML conversion allows a limited attribute set. |
+| **Template Arguments** | `{{{name|default}}}` | Distinct nodes; unresolved until expanded by the host/wiki. |
+| **Switches and Redirects** | `__TOC__`, `#REDIRECT [[Target]]` | Structured metadata, not full behavioral implementation. |
+| **Extension Tags** | `<math>`, `<gallery>`, `<syntaxhighlight>`, etc. | Retained as opaque nodes and reported as needing a handler. |
+
+### Preparing content for native rendering
+
+```csharp
+var document = Parser.ParseDocument(wikitext);
+foreach (var issue in document.CompatibilityIssues)
+    Console.WriteLine($"{issue.Kind}: {issue.Element.SourceText}");
+
+foreach (var element in ElementTraversal.DescendantsAndSelf(document.Elements))
+    Console.WriteLine(element.Type);
+```
+
+An empty issue list means no *known* unresolved constructs were found; it is not a conformance certificate. `ParseDocument` keeps infoboxes in their original position, while `ParsePage` extracts the first infobox for analysis. For full article fidelity, request the originating wiki's parsed HTML and map that expanded structure to native controls.
 
 ## Conversion to HTML and Text
 

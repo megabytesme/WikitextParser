@@ -13,6 +13,7 @@ namespace WikitextParser
         { "b", "strong", "i", "em", "u", "s", "strike", "del", "ins", "sup", "sub", "small", "big", "code", "kbd", "samp", "var", "tt", "span", "div", "p", "blockquote", "center", "br", "hr", "ruby", "rb", "rt", "rp", "abbr", "cite", "q" };
         private static readonly Regex Entity = new Regex(@"\G&(?:#[0-9]+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);");
         private static readonly Regex Protocol = new Regex(@"\G(?:https?://|ftp://|mailto:|//)", RegexOptions.IgnoreCase);
+        private static readonly Regex BehaviorSwitch = new Regex(@"\G__[A-Z][A-Z0-9_]*?__");
 
         internal static IEnumerable<WikitextElement> ParseInline(string text, int depth = 0)
         {
@@ -58,7 +59,8 @@ namespace WikitextParser
                     else if (tag.Name == "ref") element = new RefElement(source, tag.SelfClosing ? null : Content(body, depth + 1),
                         HtmlAttributes.Parse(tag.Attributes).FirstOrDefault(a => a.Key.Equals("name", StringComparison.OrdinalIgnoreCase)).Value);
                     else if (HtmlTags.Contains(tag.Name)) element = new HtmlElement(source, tag.Name, tag.Attributes, Content(body, depth + 1), tag.SelfClosing);
-                    if (element != null) { end = tag.End; return true; }
+                    else element = new ExtensionTagElement(source, tag.Name, tag.Attributes, body);
+                    end = tag.End; return true;
                 }
             }
             if (text[i] == '&')
@@ -66,6 +68,11 @@ namespace WikitextParser
                 var entity = Entity.Match(text, i);
                 if (entity.Success && WebUtility.HtmlDecode(entity.Value) != entity.Value)
                 { end = i + entity.Length; element = new EntityElement(entity.Value); return true; }
+            }
+            if (text[i] == '_')
+            {
+                var behavior = BehaviorSwitch.Match(text, i);
+                if (behavior.Success) { end = i + behavior.Length; element = new BehaviorSwitchElement(behavior.Value); return true; }
             }
             foreach (int length in new[] { 5, 3, 2 })
             {
