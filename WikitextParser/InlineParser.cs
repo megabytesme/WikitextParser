@@ -1,223 +1,147 @@
-﻿using WikitextParser.Elements;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
+using WikitextParser.Elements;
 
 namespace WikitextParser
 {
-    /// <summary>
-    /// Handles parsing of inline wikitext elements (bold, italic, links, etc.).
-    /// </summary>
     internal static class InlineParser
     {
-        internal static IEnumerable<WikitextElement> ParseInline(string sourceText)
-        {
-            if (string.IsNullOrEmpty(sourceText)) yield break;
+        private static readonly HashSet<string> HtmlTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "b", "strong", "i", "em", "u", "s", "strike", "del", "ins", "sup", "sub", "small", "big", "code", "kbd", "samp", "var", "tt", "span", "div", "p", "blockquote", "center", "br", "hr", "ruby", "rb", "rt", "rp", "abbr", "cite", "q" };
+        private static readonly Regex Entity = new Regex(@"\G&(?:#[0-9]+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);");
+        private static readonly Regex Protocol = new Regex(@"\G(?:https?://|ftp://|mailto:|//)", RegexOptions.IgnoreCase);
 
-            int lastIndex = 0;
-            for (int i = 0; i < sourceText.Length;)
+        internal static IEnumerable<WikitextElement> ParseInline(string text, int depth = 0)
+        {
+            if (string.IsNullOrEmpty(text)) yield break;
+            if (depth >= 128) { yield return new TextElement(text); yield break; }
+            int last = 0;
+            for (int i = 0; i < text.Length;)
             {
-                int tokenStart = i;
                 WikitextElement element;
-                int nextIndex;
-                if (TryParseElement(sourceText, ref i, out element, out nextIndex))
+                int end;
+                if (!TryParse(text, i, depth, out element, out end)) { i++; continue; }
+                if (i > last) yield return new TextElement(text.Substring(last, i - last));
+                yield return element;
+                last = i = end;
+            }
+            if (last < text.Length) yield return new TextElement(text.Substring(last));
+        }
+
+        internal static WikitextElement Content(string text, int depth = 0)
+        {
+            var children = ParseInline(text, depth).ToList();
+            return children.Count == 1 ? children[0] : new InlineContainerElement(text, children);
+        }
+
+        private static bool TryParse(string text, int i, int depth, out WikitextElement element, out int end)
+        {
+            element = null;
+            end = i;
+            if (ParserUtils.StartsAt(text, i, "<!--"))
+            {
+                int close = text.IndexOf("-->", i + 4, StringComparison.Ordinal);
+                end = close < 0 ? text.Length : close + 3;
+                element = new HtmlCommentElement(text.Substring(i, end - i));
+                return true;
+            }
+            if (text[i] == '<')
+            {
+                TagToken tag;
+                if (TagScanner.TryRead(text, i, out tag))
                 {
-                    if (tokenStart > lastIndex)
+                    string source = text.Substring(i, tag.End - i), body = text.Substring(tag.ContentStart, tag.ContentEnd - tag.ContentStart);
+                    if (tag.Name == "nowiki" || tag.Name == "pre") element = new LiteralElement(source, body, tag.Name == "pre");
+                    else if (tag.Name == "ref") element = new RefElement(source, tag.SelfClosing ? null : Content(body, depth + 1),
+                        HtmlAttributes.Parse(tag.Attributes).FirstOrDefault(a => a.Key.Equals("name", StringComparison.OrdinalIgnoreCase)).Value);
+                    else if (HtmlTags.Contains(tag.Name)) element = new HtmlElement(source, tag.Name, tag.Attributes, Content(body, depth + 1), tag.SelfClosing);
+                    if (element != null) { end = tag.End; return true; }
+                }
+            }
+            if (text[i] == '&')
+            {
+                var entity = Entity.Match(text, i);
+                if (entity.Success && WebUtility.HtmlDecode(entity.Value) != entity.Value)
+                { end = i + entity.Length; element = new EntityElement(entity.Value); return true; }
+            }
+            foreach (int length in new[] { 5, 3, 2 })
+            {
+                string quotes = new string('\'', length);
+                if (!ParserUtils.StartsAt(text, i, quotes)) continue;
+                int close = text.IndexOf(quotes, i + length, StringComparison.Ordinal), newline = text.IndexOf('\n', i + length);
+                if (close < 0 || (newline >= 0 && newline < close)) continue;
+                string body = text.Substring(i + length, close - i - length);
+                var content = Content(body, depth + 1);
+                end = close + length;
+                string source = text.Substring(i, end - i);
+                element = length == 2 ? (WikitextElement)new ItalicElement(source, content) : new BoldElement(source, content);
+                if (length == 5) element = new ItalicElement(source, element);
+                return true;
+            }
+            int temp = i;
+            if (BlockParser.TryParseFile(text, ref temp, out element, out end)) return true;
+            temp = i;
+            if (BlockParser.TryParseCategoryLink(text, ref temp, out element, out end)) return true;
+            if (ParserUtils.StartsAt(text, i, "[["))
+            {
+                int close = ParserUtils.FindMatchingDelimiters(text, i, "[[", "]]");
+                if (close > 0)
+                {
+                    var parts = ParserUtils.SplitAtTopLevel(text.Substring(i + 2, close - i - 4), '|').ToList();
+                    string target = parts[0].Trim().TrimStart(':'), label = parts.Count > 1 ? string.Join("|", parts.Skip(1)) : target;
+                    if (parts.Count > 1 && label.Length == 0) label = PipeTrick(target);
+                    end = close;
+                    while (end < text.Length && text[end] >= 'a' && text[end] <= 'z') end++;
+                    label += text.Substring(close, end - close);
+                    element = new LinkElement(text.Substring(i, end - i), label, target, Content(label, depth + 1));
+                    return true;
+                }
+            }
+            bool bracketed = text[i] == '[';
+            int urlStart = bracketed ? i + 1 : i;
+            if (Protocol.IsMatch(text, urlStart) && (bracketed || i == 0 || !char.IsLetterOrDigit(text[i - 1])))
+            {
+                int urlEnd = urlStart;
+                while (urlEnd < text.Length && !char.IsWhiteSpace(text[urlEnd]) && "<>[]\"".IndexOf(text[urlEnd]) < 0) urlEnd++;
+                if (urlEnd > urlStart)
+                {
+                    string label;
+                    if (bracketed)
                     {
-                        yield return new TextElement(sourceText.Substring(lastIndex, tokenStart - lastIndex));
-                    }
-                    yield return element;
-                    i = nextIndex;
-                    lastIndex = nextIndex;
-                }
-                else
-                {
-                    i++;
-                }
-            }
-
-            if (lastIndex < sourceText.Length)
-            {
-                yield return new TextElement(sourceText.Substring(lastIndex));
-            }
-        }
-
-        private static bool TryParseElement(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
-        {
-            element = null;
-            nextIndex = i;
-
-            if (TryParseHtmlComment(sourceText, ref i, out element, out nextIndex)) return true;
-            if (TryParseBoldItalic(sourceText, ref i, out element, out nextIndex)) return true;
-            if (TryParseBold(sourceText, ref i, out element, out nextIndex)) return true;
-            if (TryParseItalic(sourceText, ref i, out element, out nextIndex)) return true;
-            if (BlockParser.TryParseFile(sourceText, ref i, out element, out nextIndex)) return true;
-            if (TryParseLink(sourceText, ref i, out element, out nextIndex)) return true;
-            if (TryParseRef(sourceText, ref i, out element, out nextIndex)) return true;
-            if (BlockParser.TryParseTemplate(sourceText, ref i, out element, out nextIndex)) return true;
-
-            return false;
-        }
-
-        private static bool TryParseHtmlComment(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
-        {
-            element = null;
-            nextIndex = i;
-            if (i + 3 < sourceText.Length && sourceText.Substring(i, 4) == "<!--")
-            {
-                int end = sourceText.IndexOf("-->", i + 4, System.StringComparison.Ordinal);
-                if (end != -1)
-                {
-                    nextIndex = end + 3;
-                    element = new HtmlCommentElement(sourceText.Substring(i, nextIndex - i));
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool TryParseBoldItalic(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
-        {
-            element = null;
-            nextIndex = i;
-            if (i + 4 < sourceText.Length && sourceText.Substring(i, 5) == "'''''")
-            {
-                int end = sourceText.IndexOf("'''''", i + 5, System.StringComparison.Ordinal);
-                if (end != -1)
-                {
-                    string innerSource = sourceText.Substring(i + 5, end - (i + 5));
-                    BoldElement bold = new BoldElement(innerSource, ParseInline(innerSource).FirstOrDefault() ?? new TextElement(innerSource));
-                    element = new ItalicElement(sourceText.Substring(i, end - i + 5), bold);
-                    nextIndex = end + 5;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool TryParseBold(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
-        {
-            element = null;
-            nextIndex = i;
-            if (i + 2 < sourceText.Length && sourceText.Substring(i, 3) == "'''")
-            {
-                int end = sourceText.IndexOf("'''", i + 3, System.StringComparison.Ordinal);
-                if (end != -1)
-                {
-                    string innerSource = sourceText.Substring(i + 3, end - (i + 3));
-                    element = new BoldElement(sourceText.Substring(i, end - i + 3), ParseInline(innerSource).FirstOrDefault() ?? new TextElement(innerSource));
-                    nextIndex = end + 3;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool TryParseItalic(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
-        {
-            element = null;
-            nextIndex = i;
-            if (i + 1 < sourceText.Length && sourceText.Substring(i, 2) == "''")
-            {
-                int end = sourceText.IndexOf("''", i + 2, System.StringComparison.Ordinal);
-                if (end != -1)
-                {
-                    string innerSource = sourceText.Substring(i + 2, end - (i + 2));
-                    element = new ItalicElement(sourceText.Substring(i, end - i + 2), ParseInline(innerSource).FirstOrDefault() ?? new TextElement(innerSource));
-                    nextIndex = end + 2;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool TryParseLink(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
-        {
-            element = null;
-            nextIndex = i;
-            if (i + 1 < sourceText.Length && sourceText.Substring(i, 2) == "[[")
-            {
-                if (sourceText.Length > i + 10 && sourceText.Substring(i + 2).StartsWith("Category:", System.StringComparison.OrdinalIgnoreCase)) return false;
-                if (sourceText.Length > i + 7 && sourceText.Substring(i + 2).StartsWith("File:", System.StringComparison.OrdinalIgnoreCase)) return false;
-                if (sourceText.Length > i + 8 && sourceText.Substring(i + 2).StartsWith("Image:", System.StringComparison.OrdinalIgnoreCase)) return false;
-
-                int end = sourceText.IndexOf("]]", i + 2, System.StringComparison.Ordinal);
-                if (end != -1)
-                {
-                    string linkContent = sourceText.Substring(i + 2, end - (i + 2));
-                    string url, displayText;
-                    int pipe = linkContent.IndexOf('|');
-                    if (pipe != -1)
-                    {
-                        displayText = linkContent.Substring(0, pipe);
-                        url = linkContent.Substring(pipe + 1);
+                        int close = text.IndexOf(']', urlEnd);
+                        if (close < 0) return false;
+                        label = text.Substring(urlEnd, close - urlEnd).Trim();
+                        end = close + 1;
                     }
                     else
                     {
-                        url = displayText = linkContent;
+                        while (urlEnd > urlStart && ".,;:!?".IndexOf(text[urlEnd - 1]) >= 0) urlEnd--;
+                        while (urlEnd > urlStart && text[urlEnd - 1] == ')' && text.Substring(urlStart, urlEnd - urlStart).Count(c => c == ')') > text.Substring(urlStart, urlEnd - urlStart).Count(c => c == '(')) urlEnd--;
+                        end = urlEnd;
+                        label = "";
                     }
-                    element = new LinkElement(sourceText.Substring(i, end - i + 2), displayText, url);
-                    nextIndex = end + 2;
+                    string url = text.Substring(urlStart, urlEnd - urlStart);
+                    // URL labels must be plain nodes to avoid parsing bare URLs recursively.
+                    element = new ExternalLinkElement(text.Substring(i, end - i), url,
+                        label.Length == 0 ? new TextElement(url) : Content(label, depth + 1), !bracketed);
                     return true;
                 }
             }
-            return false;
+            temp = i;
+            return BlockParser.TryParseTemplate(text, ref temp, out element, out end);
         }
 
-        private static bool TryParseRef(string sourceText, ref int i, out WikitextElement element, out int nextIndex)
+        private static string PipeTrick(string target)
         {
-            element = null;
-            nextIndex = i;
-
-            if (sourceText.Length <= i + 4 || !sourceText.Substring(i).StartsWith("<ref")) return false;
-
-            int tagEnd = sourceText.IndexOf('>', i + 4);
-            if (tagEnd == -1) return false;
-
-            string tagContent = sourceText.Substring(i + 4, tagEnd - (i + 4));
-            string name = null;
-
-            int nameIndex = tagContent.IndexOf("name=", System.StringComparison.OrdinalIgnoreCase);
-            if (nameIndex != -1)
-            {
-                int valueStart = nameIndex + 5;
-                char quoteChar = tagContent[valueStart];
-                if (quoteChar == '"' || quoteChar == '\'')
-                {
-                    int valueEnd = tagContent.IndexOf(quoteChar, valueStart + 1);
-                    if (valueEnd != -1)
-                    {
-                        name = tagContent.Substring(valueStart + 1, valueEnd - (valueStart + 1));
-                    }
-                }
-            }
-
-            if (tagContent.Trim().EndsWith("/"))
-            {
-                nextIndex = tagEnd + 1;
-                string fullSource = sourceText.Substring(i, nextIndex - i);
-                element = new RefElement(fullSource, null, name);
-                return true;
-            }
-
-            int contentEnd = sourceText.IndexOf("</ref>", tagEnd, System.StringComparison.Ordinal);
-            if (contentEnd != -1)
-            {
-                nextIndex = contentEnd + 6;
-                string innerSource = sourceText.Substring(tagEnd + 1, contentEnd - (tagEnd + 1));
-                WikitextElement childElement = null;
-
-                if (!string.IsNullOrEmpty(innerSource))
-                {
-                    var children = ParseInline(innerSource).ToList();
-                    childElement = children.Count == 1 ? children.First() : new ParagraphElement(innerSource, children.Select(c => c));
-                }
-
-                string fullSource = sourceText.Substring(i, nextIndex - i);
-                element = new RefElement(fullSource, childElement, name);
-                return true;
-            }
-
-            return false;
+            int colon = target.IndexOf(':');
+            string label = colon >= 0 ? target.Substring(colon + 1) : target;
+            int suffix = label.LastIndexOf(" (", StringComparison.Ordinal);
+            if (suffix >= 0 && label.EndsWith(")", StringComparison.Ordinal)) label = label.Substring(0, suffix);
+            int comma = label.IndexOf(',');
+            return comma >= 0 ? label.Substring(0, comma) : label;
         }
     }
 }

@@ -20,6 +20,11 @@
         Category,
         Table,
         TableRow,
-        TableCell
+        TableCell,
+        InlineContainer,
+        Literal,
+        Entity,
+        ExternalLink,
+        Html
     }
 }

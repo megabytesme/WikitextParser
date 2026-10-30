@@ -144,7 +144,7 @@ public class ParserTests
         var quoteValueParagraph = quoteParams[0].Value.Should().BeOfType<ParagraphElement>().Subject;
 
         quoteValueParagraph.ChildElements.OfType<LinkElement>().Single()
-            .DisplayText.Should().Be("link");
+            .DisplayText.Should().Be("pipe");
     }
 
     [Fact]

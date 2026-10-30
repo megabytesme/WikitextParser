@@ -7,6 +7,9 @@ namespace WikitextParser
     /// </summary>
     internal static class ParserUtils
     {
+        internal static bool StartsAt(string text, int index, string value) => index >= 0 &&
+            index + value.Length <= text.Length && string.CompareOrdinal(text, index, value, 0, value.Length) == 0;
+
         internal static int FindMatchingDelimiters(string text, int startIndex, string open, string close)
         {
             int count = 0;
