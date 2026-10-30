@@ -23,18 +23,23 @@ namespace WikitextParser
                 i++;
             }
 
-            if (level < 2) return false;
+            if (level == 0) return false;
 
             int endOfLine = text.IndexOf('\n', i);
             if (endOfLine == -1) endOfLine = text.Length;
 
-            string lineContent = text.Substring(i, endOfLine - i);
-            string innerText = lineContent.TrimEnd('=').Trim();
+            int trimmedEnd = endOfLine;
+            while (trimmedEnd > i && (text[trimmedEnd - 1] == ' ' || text[trimmedEnd - 1] == '\t')) trimmedEnd--;
+            int closing = 0;
+            while (trimmedEnd - closing > i && text[trimmedEnd - closing - 1] == '=') closing++;
+            if (closing == 0) return false;
+            level = System.Math.Min(6, System.Math.Min(level, closing));
+            string innerText = text.Substring(currentIndex + level, trimmedEnd - currentIndex - 2 * level).Trim();
 
             if (string.IsNullOrEmpty(innerText)) return false;
 
             string sourceText = text.Substring(currentIndex, endOfLine - currentIndex);
-            var childElement = InlineParser.ParseInline(innerText).FirstOrDefault() ?? new TextElement(innerText);
+            var childElement = InlineParser.Content(innerText);
 
             heading = new HeadingElement(sourceText, level, childElement);
             currentIndex = endOfLine;

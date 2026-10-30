@@ -25,6 +25,11 @@
         Literal,
         Entity,
         ExternalLink,
-        Html
+        Html,
+        BlockContainer,
+        List,
+        ListItem,
+        Preformatted,
+        HorizontalRule
     }
 }
