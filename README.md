@@ -1,5 +1,13 @@
 # WikitextParser
 
+WikitextParser is a platform-independent .NET Standard 1.4 library for parsing MediaWiki wikitext into a structured object model. It provides an ordered syntax tree, page and section APIs, and basic HTML and plain-text conversion.
+
+Use it in .NET MAUI, console applications, web services, or other applications running on a compatible .NET runtime. The library has no dependency on a UI framework. Applications choose how to obtain the wikitext and how to display or process the parsed content. See Microsoft's [.NET Standard documentation](https://learn.microsoft.com/en-us/dotnet/standard/net-standard) for runtime compatibility.
+
+The parser covers core syntax; it does not implement the complete MediaWiki runtime. Template expansion, Lua, extensions and exact wiki rendering require context from the originating wiki or application-provided handlers.
+
+## Wiki-specific syntax
+
 Wiki-specific syntax can be supplied without changing process-global state:
 
 ```csharp
@@ -16,18 +24,14 @@ var document = Parser.ParseDocument(source, options);
 
 Use `InclusionMode.Transclusion` for inclusion controls when inspecting template bodies, or `Preserve` to retain their markup. This selects content; template expansion, substitution, Lua, extension behavior and full MediaWiki grammar remain with the originating wiki.
 
-WikitextParser is a .NET Standard 1.4 library for parsing MediaWiki wikitext into a structured object model, including on UWP 15063+. It provides an ordered syntax tree, a page/section API, and basic HTML and text conversion.
-
-This branch expands core syntax support while retaining C# 7.3 and older UWP compatibility. It is **not a full MediaWiki implementation**: template expansion, Lua, extensions, localized grammar and exact rendering need wiki context.
-
 ## Features
 
 - **Dual-Level API**:
     - **High-Level API (`Parser.ParsePage`)**: Parses an entire page into a structured `Page` object with a lead section, an infobox, and a nested hierarchy of sections.
     - **Low-Level API (`Parser.Parse`)**: Parses wikitext into a flat `IEnumerable<WikitextElement>` for custom processing and analysis.
 - **Content Conversion**: Convert any parsed element, section, or the entire page into either HTML or plain text.
-- **UWP Compatibility**: Targets .NET Standard 1.4, with compatibility package references for older runtimes.
-- **Rendering Preparation**: `Parser.ParseDocument` retains source order and reports known constructs requiring server or host rendering. `ElementTraversal` exposes children without depending on a UI framework.
+- **Platform Independence**: Targets .NET Standard 1.4 and can be consumed by compatible .NET applications without a UI framework dependency.
+- **Document Inspection**: `Parser.ParseDocument` retains source order and reports known constructs requiring additional wiki context or application handling. `ElementTraversal` exposes children for custom analysis, conversion or rendering.
 
 ## Installation
 
@@ -180,7 +184,7 @@ The parser currently supports the following wikitext syntax:
 | **Switches and Redirects** | `__TOC__`, `#REDIRECT [[Target]]` | Structured metadata, not full behavioral implementation. |
 | **Extension Tags** | `<math>`, `<gallery>`, `<syntaxhighlight>`, etc. | Retained as opaque nodes and reported as needing a handler. |
 
-### Preparing content for native rendering
+### Inspecting the document tree
 
 ```csharp
 var document = Parser.ParseDocument(wikitext);
@@ -191,7 +195,7 @@ foreach (var element in ElementTraversal.DescendantsAndSelf(document.Elements))
     Console.WriteLine(element.Type);
 ```
 
-An empty issue list means no *known* unresolved constructs were found; it is not a conformance certificate. `ParseDocument` keeps infoboxes in their original position, while `ParsePage` extracts the first infobox for analysis. For full article fidelity, request the originating wiki's parsed HTML and map that expanded structure to native controls.
+An empty issue list means no *known* unresolved constructs were found; it is not a conformance certificate. `ParseDocument` keeps infoboxes in their original position, while `ParsePage` extracts the first infobox for analysis. Applications can traverse the tree for analysis, implement their own converters, or obtain server-expanded output for content that depends on templates, modules or extensions.
 
 ## Conversion to HTML and Text
 
@@ -222,6 +226,8 @@ To build the project yourself:
 2.  Clone the repository.
 3.  Navigate to the root directory.
 4.  Run `dotnet build`.
+
+The library targets .NET Standard 1.4 and uses C# 7.3. The test project uses .NET 9; run `dotnet test WikitextParser.sln -c Release` with that runtime installed, or set `DOTNET_ROLL_FORWARD=Major` when using a compatible newer runtime.
 
 ## License
 

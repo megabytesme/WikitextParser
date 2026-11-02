@@ -13,13 +13,13 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Authors>megabytesme, stanac</Authors>
-    <Description>A lightweight, dependency-free .NET library for parsing Wikipedia's wikitext markup into a structured object model with both low-level and high-level APIs. Forked to support older .NET frameworks like .NET Standard 1.4 for UWP 15063+ (1703).</Description>
+    <Description>A platform-independent .NET Standard library for parsing MediaWiki wikitext into a structured object model, with page and section APIs and HTML/text conversion.</Description>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
     <RepositoryUrl>https://github.com/megabytesme/WikitextParser</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>wiki;wikipedia;parser;wikitext;wikicode;markup;netstandard;uwp;15063</PackageTags>
+    <PackageTags>wiki;mediawiki;parser;wikitext;wikicode;markup;netstandard;dotnet</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
